@@ -1,0 +1,40 @@
+/* One mid-grey background everywhere, so screen brightness on the face does not change between screens. */
+:root { --bg: #5a5f66; --fg: #f2f2f2; --muted: #c9cdd3; --accent: #ffd166; --rec: #ff5c5c; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+  font: 17px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+.hidden { display: none !important; }
+.muted { color: var(--muted); }
+.error { color: #ffb3b3; }
+code { background: rgba(0,0,0,.25); padding: 1px 4px; border-radius: 3px; }
+h1 { font-size: 26px; margin: 0 0 6px; }
+h2 { font-size: 18px; margin: 18px 0 8px; }
+button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid #222; background: #e8e8e8; color: #111; cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+button.secondary { background: transparent; color: var(--fg); border-color: var(--muted); }
+label { display: block; margin: 6px 0; }
+input, select { font: inherit; }
+.checklist { padding-left: 0; list-style: none; }
+.checklist li { margin: 4px 0; }
+
+.screen { padding: 24px 36px; min-height: 100%; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+#preview { width: 100%; max-width: 480px; background: #000; border-radius: 6px; display: block; margin-top: 8px; }
+#camera-info { font-size: 12px; white-space: pre-wrap; }
+
+/* Recording indicator: small, in the corner, never near the text. */
+#rec-indicator { position: fixed; right: 18px; bottom: 14px; color: var(--rec); font-weight: 600; font-size: 15px; z-index: 10; }
+
+/* Take screen: the prompter sits at the very top, under the laptop lens. */
+#take { padding: 0; display: flex; flex-direction: column; height: 100vh; }
+#prompter { padding: 14px 6vw 10px; min-height: 36vh; text-align: center; }
+#prompter-text { font-size: 42px; line-height: 1.3; font-weight: 500; margin: 4px 0 8px; }
+#prompter-text.small { font-size: 30px; }
+.hint { font-size: 15px; color: var(--muted); }
+#take-body { flex: 1; padding: 12px 6vw 24px; }
+#take-meta { font-size: 14px; }
+#take-instructions { font-size: 18px; margin-top: 8px; }
+#preview-text { font-size: 24px; line-height: 1.5; max-width: 900px; margin: 10px auto; }
+#selfview { position: fixed; left: 18px; bottom: 14px; width: 200px; border-radius: 6px; background: #000; }
+kbd { background: #222; color: #fff; padding: 1px 6px; border-radius: 4px; font-size: 90%; }
+pre#done-summary { font-size: 13px; white-space: pre-wrap; }

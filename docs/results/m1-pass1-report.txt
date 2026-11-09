@@ -1,0 +1,80 @@
+a1_raw: 8880/8880 clips with activations
+a2_prefill: 8880/8880 clips with activations
+a2_turn: 8880/8880 clips with activations
+
+clips: {'crema': {'dev': 4987, 'heldout': 2453}, 'ravdess': {'dev': 960, 'heldout': 480}} actors: {'crema': {'dev': 61, 'heldout': 30}, 'ravdess': {'dev': 16, 'heldout': 8}}
+
+PERCEPTION CEILING (zero-shot forced choice, held-out actors)
+  own label set: crema 0.463  ravdess 0.342  mean 0.402 | six shared labels: crema 0.463  ravdess 0.455  mean 0.459
+  among the four negatives: crema 0.300  ravdess 0.344  mean 0.322 | unparsed: 0.0
+  recall: {'crema': {'afraid': 0.296, 'angry': 0.069, 'disgusted': 0.706, 'happy': 0.766, 'neutral': 0.872, 'sad': 0.126}, 'ravdess': {'afraid': 0.047, 'angry': 0.062, 'calm': 0.0, 'disgusted': 0.609, 'happy': 0.672, 'neutral': 0.906, 'sad': 0.656, 'surprised': 0.062}}
+  by intensity: {'crema': {'high': 0.527, 'low': 0.393, 'medium': 0.433, 'unspecified': 0.465}, 'ravdess': {'normal': 0.363, 'strong': 0.317}}
+  CREMA-D human raters, face only: {'dev': {'accuracy': 0.6621215159414477, 'n': 4987}, 'heldout': {'accuracy': 0.6632694659600489, 'n': 2453}}
+
+VALENCE AUC, held-out (happy vs four negatives), by layout/readout/layer [per-person baseline]
+  a1_raw      last  L20: crema 0.960  ravdess 0.988  mean 0.974   | no baseline: 0.932 | 4-way 0.352 (no baseline 0.319, valence removed 0.368) | probe6 0.569
+  a1_raw      last  L25: crema 0.838  ravdess 0.834  mean 0.836   | no baseline: 0.788 | 4-way 0.327 (no baseline 0.281, valence removed 0.330) | probe6 0.567
+  a1_raw      last  L30: crema 0.904  ravdess 0.986  mean 0.945   | no baseline: 0.887 | 4-way 0.355 (no baseline 0.370, valence removed 0.344) | probe6 0.538
+  a1_raw      last  L35: crema 0.931  ravdess 0.978  mean 0.955   | no baseline: 0.950 | 4-way 0.353 (no baseline 0.378, valence removed 0.328) | probe6 0.548
+  a1_raw      last  L40: crema 0.957  ravdess 0.989  mean 0.973   | no baseline: 0.960 | 4-way 0.354 (no baseline 0.337, valence removed 0.329) | probe6 0.546
+  a1_raw      last  L45: crema 0.967  ravdess 0.989  mean 0.978   | no baseline: 0.974 | 4-way 0.470 (no baseline 0.503, valence removed 0.421) | probe6 0.553
+  a1_raw      last  L50: crema 0.963  ravdess 0.991  mean 0.977   | no baseline: 0.973 | 4-way 0.445 (no baseline 0.443, valence removed 0.411) | probe6 0.557
+  a1_raw      image L20: crema 0.968  ravdess 0.995  mean 0.982   | no baseline: 0.954 | 4-way 0.380 (no baseline 0.360, valence removed 0.367) | probe6 0.556
+  a1_raw      image L25: crema 0.953  ravdess 0.993  mean 0.973   | no baseline: 0.945 | 4-way 0.391 (no baseline 0.387, valence removed 0.425) | probe6 0.559
+  a1_raw      image L30: crema 0.863  ravdess 0.970  mean 0.916   | no baseline: 0.891 | 4-way 0.373 (no baseline 0.366, valence removed 0.353) | probe6 0.551
+  a1_raw      image L35: crema 0.876  ravdess 0.966  mean 0.921   | no baseline: 0.914 | 4-way 0.325 (no baseline 0.344, valence removed 0.300) | probe6 0.534
+  a1_raw      image L40: crema 0.865  ravdess 0.942  mean 0.903   | no baseline: 0.878 | 4-way 0.319 (no baseline 0.298, valence removed 0.296) | probe6 0.526
+  a1_raw      image L45: crema 0.817  ravdess 0.939  mean 0.878   | no baseline: 0.868 | 4-way 0.322 (no baseline 0.311, valence removed 0.306) | probe6 0.545
+  a1_raw      image L50: crema 0.683  ravdess 0.803  mean 0.743   | no baseline: 0.734 | 4-way 0.336 (no baseline 0.288, valence removed 0.330) | probe6 0.530
+  a2_prefill  last  L20: crema 0.977  ravdess 0.989  mean 0.983   | no baseline: 0.961 | 4-way 0.374 (no baseline 0.323, valence removed 0.393) | probe6 0.575
+  a2_prefill  last  L25: crema 0.978  ravdess 0.995  mean 0.986   | no baseline: 0.980 | 4-way 0.424 (no baseline 0.416, valence removed 0.416) | probe6 0.588
+  a2_prefill  last  L30: crema 0.972  ravdess 0.995  mean 0.984   | no baseline: 0.978 | 4-way 0.470 (no baseline 0.430, valence removed 0.462) | probe6 0.590
+  a2_prefill  last  L35: crema 0.973  ravdess 0.997  mean 0.985   | no baseline: 0.982 | 4-way 0.576 (no baseline 0.584, valence removed 0.512) | probe6 0.601
+  a2_prefill  last  L40: crema 0.965  ravdess 0.996  mean 0.980   | no baseline: 0.979 | 4-way 0.463 (no baseline 0.521, valence removed 0.533) | probe6 0.593
+  a2_prefill  last  L45: crema 0.968  ravdess 0.997  mean 0.982   | no baseline: 0.985 | 4-way 0.512 (no baseline 0.567, valence removed 0.553) | probe6 0.598
+  a2_prefill  last  L50: crema 0.966  ravdess 0.997  mean 0.982   | no baseline: 0.983 | 4-way 0.566 (no baseline 0.552, valence removed 0.548) | probe6 0.596
+  a2_prefill  image L20: crema 0.958  ravdess 0.993  mean 0.976   | no baseline: 0.944 | 4-way 0.378 (no baseline 0.339, valence removed 0.348) | probe6 0.547
+  a2_prefill  image L25: crema 0.956  ravdess 0.993  mean 0.974   | no baseline: 0.950 | 4-way 0.349 (no baseline 0.323, valence removed 0.352) | probe6 0.562
+  a2_prefill  image L30: crema 0.948  ravdess 0.985  mean 0.967   | no baseline: 0.930 | 4-way 0.356 (no baseline 0.354, valence removed 0.351) | probe6 0.576
+  a2_prefill  image L35: crema 0.960  ravdess 0.991  mean 0.976   | no baseline: 0.964 | 4-way 0.390 (no baseline 0.382, valence removed 0.379) | probe6 0.558
+  a2_prefill  image L40: crema 0.956  ravdess 0.990  mean 0.973   | no baseline: 0.966 | 4-way 0.399 (no baseline 0.401, valence removed 0.367) | probe6 0.566
+  a2_prefill  image L45: crema 0.964  ravdess 0.992  mean 0.978   | no baseline: 0.966 | 4-way 0.415 (no baseline 0.408, valence removed 0.407) | probe6 0.560
+  a2_prefill  image L50: crema 0.941  ravdess 0.991  mean 0.966   | no baseline: 0.952 | 4-way 0.470 (no baseline 0.396, valence removed 0.431) | probe6 0.575
+  a2_turn     last  L20: crema 0.881  ravdess 0.945  mean 0.913   | no baseline: 0.873 | 4-way 0.267 (no baseline 0.263, valence removed 0.237) | probe6 0.484
+  a2_turn     last  L25: crema 0.780  ravdess 0.746  mean 0.763   | no baseline: 0.767 | 4-way 0.299 (no baseline 0.274, valence removed 0.268) | probe6 0.551
+  a2_turn     last  L30: crema 0.866  ravdess 0.772  mean 0.819   | no baseline: 0.790 | 4-way 0.229 (no baseline 0.254, valence removed 0.244) | probe6 0.564
+  a2_turn     last  L35: crema 0.964  ravdess 0.994  mean 0.979   | no baseline: 0.975 | 4-way 0.261 (no baseline 0.304, valence removed 0.285) | probe6 0.568
+  a2_turn     last  L40: crema 0.906  ravdess 0.928  mean 0.917   | no baseline: 0.908 | 4-way 0.311 (no baseline 0.372, valence removed 0.313) | probe6 0.584
+  a2_turn     last  L45: crema 0.912  ravdess 0.955  mean 0.933   | no baseline: 0.923 | 4-way 0.413 (no baseline 0.481, valence removed 0.383) | probe6 0.586
+  a2_turn     last  L50: crema 0.911  ravdess 0.901  mean 0.906   | no baseline: 0.887 | 4-way 0.364 (no baseline 0.366, valence removed 0.332) | probe6 0.574
+  a2_turn     image L20: crema 0.958  ravdess 0.993  mean 0.976   | no baseline: 0.944 | 4-way 0.378 (no baseline 0.339, valence removed 0.348) | probe6 0.547
+  a2_turn     image L25: crema 0.956  ravdess 0.993  mean 0.974   | no baseline: 0.950 | 4-way 0.349 (no baseline 0.323, valence removed 0.352) | probe6 0.562
+  a2_turn     image L30: crema 0.948  ravdess 0.985  mean 0.967   | no baseline: 0.930 | 4-way 0.356 (no baseline 0.354, valence removed 0.351) | probe6 0.576
+  a2_turn     image L35: crema 0.960  ravdess 0.991  mean 0.976   | no baseline: 0.964 | 4-way 0.390 (no baseline 0.382, valence removed 0.379) | probe6 0.558
+  a2_turn     image L40: crema 0.956  ravdess 0.990  mean 0.973   | no baseline: 0.966 | 4-way 0.399 (no baseline 0.401, valence removed 0.367) | probe6 0.566
+  a2_turn     image L45: crema 0.964  ravdess 0.992  mean 0.978   | no baseline: 0.966 | 4-way 0.415 (no baseline 0.408, valence removed 0.407) | probe6 0.560
+  a2_turn     image L50: crema 0.941  ravdess 0.991  mean 0.966   | no baseline: 0.952 | 4-way 0.470 (no baseline 0.396, valence removed 0.431) | probe6 0.575
+
+SELECTED ON DEV
+  valence_last: a2_prefill L50 dev 0.987 -> held-out crema 0.966  ravdess 0.997  mean 0.982 (no baseline 0.983)
+      eta2(emotion) by PC: [0.647, 0.534, 0.358, 0.487, 0.32, 0.169, 0.117, 0.21, 0.242, 0.222]
+      valence variance: actor 0.06 emotion 0.73 -> baselined: actor 0.12 emotion 0.68; 171 scores: actor 0.12 emotion 0.53 -> baselined: actor 0.14 emotion 0.51
+  valence_image: a2_prefill L45 dev 0.980 -> held-out crema 0.964  ravdess 0.992  mean 0.978 (no baseline 0.966)
+      eta2(emotion) by PC: [0.46, 0.055, 0.174, 0.184, 0.25, 0.16, 0.219, 0.006, 0.029, 0.053]
+      valence variance: actor 0.19 emotion 0.54 -> baselined: actor 0.07 emotion 0.61; 171 scores: actor 0.33 emotion 0.35 -> baselined: actor 0.12 emotion 0.46
+  four_way_last: a2_prefill L35 dev 0.575 -> held-out crema 0.551  ravdess 0.602  mean 0.576 (no baseline 0.584)
+      eta2(emotion) by PC: [0.625, 0.312, 0.329, 0.308, 0.199, 0.414, 0.323, 0.164, 0.456, 0.55]
+      valence variance: actor 0.07 emotion 0.70 -> baselined: actor 0.08 emotion 0.70; 171 scores: actor 0.11 emotion 0.58 -> baselined: actor 0.09 emotion 0.59
+  four_way_image: a2_prefill L50 dev 0.474 -> held-out crema 0.476  ravdess 0.465  mean 0.470 (no baseline 0.396)
+      eta2(emotion) by PC: [0.406, 0.032, 0.166, 0.112, 0.28, 0.06, 0.268, 0.068, 0.082, 0.102]
+      valence variance: actor 0.17 emotion 0.52 -> baselined: actor 0.08 emotion 0.57; 171 scores: actor 0.35 emotion 0.33 -> baselined: actor 0.13 emotion 0.43
+
+VERBAL BASELINE (next-word probabilities), held-out
+  a1_raw: valence AUC crema 0.950  ravdess 0.989  mean 0.970 | 4-way crema 0.287  ravdess 0.371  mean 0.329 | 5-way crema 0.248  ravdess 0.291  mean 0.269
+  a2_prefill: valence AUC crema 0.960  ravdess 0.996  mean 0.978 | 4-way crema 0.455  ravdess 0.465  mean 0.460 | 5-way crema 0.501  ravdess 0.559  mean 0.530
+
+BLENDSHAPE BASELINE (trained on dev actors), held-out
+  valence AUC crema 0.902  ravdess 0.985  mean 0.943 | 4-way crema 0.536  ravdess 0.621  mean 0.579 | 6-way crema 0.463  ravdess 0.608  mean 0.535
+
+OFF-THE-SHELF EXPRESSION MODEL (HSEmotion, no training on these corpora), held-out
+  valence AUC crema 0.968  ravdess 0.991  mean 0.979 | 4-way crema 0.533  ravdess 0.637  mean 0.585 | 6-way crema 0.508  ravdess 0.682  mean 0.595

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>cogmirror recorder</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="rec-indicator" class="hidden">● REC <span id="rec-clock">0:00</span></div>
+
+<!-- ---------------------------------------------------------------- setup -->
+<section id="setup" class="screen">
+  <h1>cogmirror recorder</h1>
+  <p class="muted">Milestone 3: reading and listening takes. Nothing leaves this machine; takes are written under <code>data/recordings/&lt;session&gt;/</code>.</p>
+
+  <div class="cols">
+    <div>
+      <h2>Before every session</h2>
+      <ul class="checklist">
+        <li><label><input type="checkbox" class="must"> Same lighting as previous sessions: lamps on, blinds as before, no window behind you</label></li>
+        <li><label><input type="checkbox" class="must"> Same framing: camera at eye height, face filling roughly the middle third, do not move the laptop during the session</label></li>
+        <li><label><input type="checkbox" class="must"> Text appears at the top of the screen, right under the lens. Sit so that reading it keeps your eyes near the lens</label></li>
+        <li><label><input type="checkbox" class="must"> Microphone unmuted, speakers on for the listening takes, phone silenced</label></li>
+      </ul>
+
+      <h2>Session</h2>
+      <label>Session id <input id="session-id" size="22"></label>
+      <label>Takes this session (excluding calibration) <input id="n-takes" type="number" min="1" max="200" value="12"></label>
+      <label><input id="allow-repeat" type="checkbox"> Allow (story, condition) pairs that were already recorded</label>
+      <label><input id="self-view" type="checkbox"> Show a small self view during takes (off by default: it pulls the eyes away from the lens)</label>
+      <label>Only this condition <select id="only-condition"><option value="">both, interleaved</option><option value="read">reading only</option><option value="listen">listening only</option></select></label>
+      <p id="progress-summary" class="muted">loading progress…</p>
+    </div>
+
+    <div>
+      <h2>Camera</h2>
+      <label>Device <select id="camera"></select></label>
+      <label>Resolution <select id="resolution"><option value="1280x720">1280×720</option><option value="1920x1080" selected>1920×1080</option></select></label>
+      <button id="start-camera">Start camera</button>
+      <video id="preview" autoplay muted playsinline></video>
+      <pre id="camera-info" class="muted"></pre>
+    </div>
+  </div>
+
+  <p><button id="start-session" disabled>Start session (60 s calibration first)</button></p>
+  <p id="setup-error" class="error"></p>
+</section>
+
+<!-- ----------------------------------------------------------------- take -->
+<section id="take" class="screen hidden">
+  <div id="prompter">
+    <div id="prompter-hint" class="hint"></div>
+    <div id="prompter-text"></div>
+    <div id="prompter-progress" class="hint"></div>
+  </div>
+  <div id="take-body">
+    <div id="take-meta" class="muted"></div>
+    <div id="preview-text" class="hidden"></div>
+    <div id="take-instructions"></div>
+    <video id="selfview" class="hidden" autoplay muted playsinline></video>
+  </div>
+</section>
+
+<!-- --------------------------------------------------------------- review -->
+<section id="review" class="screen hidden">
+  <h2>Take finished</h2>
+  <p id="review-info"></p>
+  <p>
+    <button id="keep">Keep (Enter)</button>
+    <button id="redo">Redo, mark this take bad (R)</button>
+  </p>
+  <p><label>Note (optional) <input id="take-note" size="60"></label></p>
+  <p id="upload-status" class="muted"></p>
+  <p><button id="end-session" class="secondary">End session after this take</button></p>
+</section>
+
+<!-- ----------------------------------------------------------------- done -->
+<section id="done" class="screen hidden">
+  <h2>Session complete</h2>
+  <pre id="done-summary"></pre>
+  <p><button onclick="location.reload()">Back to setup</button></p>
+</section>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

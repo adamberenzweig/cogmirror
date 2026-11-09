@@ -167,6 +167,52 @@ Consequences carried forward:
 | Identity | Share of neutral-face variance due to identity, after per-person baseline | Reported; no threshold |
 | Versus verbal baseline | All of the above for both | Reported; no threshold |
 
+**Gate 1 result (2026-11-09): pass on direction, beyond-valence, noise floor and prompt robustness; the perception-ceiling criterion is not met, for a reason that undercuts the criterion rather than the method. Proceed to M2.**
+
+Run: 8,880 clips (7,440 CREMA-D, 1,440 RAVDESS), two frames per clip from the middle third, medium crop, budget 280, all three layouts, on L40S. Settings chosen on dev actors (61 + 16), reported on held-out actors (30 + 8). About 6.5 GPU-hours in all (first pass 4.6, noise floor 0.3, prompts 0.8, trials).
+
+| Check | Result | Pass? |
+|---|---|---|
+| Perception ceiling (zero-shot forced choice by generation) | CREMA-D 46% six-way (chance 17%); RAVDESS 34% eight-way (chance 12.5%), 45% on the six shared labels; 32% among the four negatives (chance 25%). CREMA-D's own face-only human raters: 66%. The model says *neutral* (87–91% recall), *happy* (67–77%) and *disgusted* (61–71%) readily, but almost never *angry* (6–7%) or, on CREMA-D, *sad* (13%) | No (threshold 50%) |
+| Direction (valence AUC, happy vs four negatives) | 0.982 held-out (CREMA-D 0.966, RAVDESS 0.997) with the chat-prefill layout, last token, layer 50. Nearly every layout and layer is above 0.90; the image-token readout at layer 20 also reaches 0.982 | Yes (≥ 0.80) |
+| Beyond valence (4-way among negatives, nearest emotion vector, no training) | 57.6% (CREMA-D 55.1%, RAVDESS 60.2%) with chat-prefill, last token, layer 35. With the valence direction projected out first: 51.2%. Recall: sad 71%, angry 59%, disgusted 46%, afraid 45%; the main confusions are everything → sad and afraid → sad | Yes (≥ 40%) |
+| Noise floor (expression gap ÷ RMS valence shift, layer 35) | Batch-size change 43; brightness ±20%: 17–18; 16-px shifts 16–17; 5% zoom 14; JPEG quality 40: 9. The 4-way label flips for 7–10% of clips under image perturbations (16% for JPEG, 3.5% for batch size) | Yes (≥ 2) |
+| Identity | Valence variance (held-out, six emotions): actor 6%, emotion 73% for the last-token readout. The image-token readout carries more identity (19% on valence, 33% on the 171 scores), which a per-person baseline removes (7% and 12%). For the last-token readout the baseline from each actor's few neutral clips did not help (6% → 12%) | Reported |
+| Prompt robustness (five paraphrases, held-out, one frame) | Valence AUC 0.960–0.964 for every prompt at layer 35; between prompts, valence r 0.96 (worst pair 0.91), 171-profile cosine 0.92, 4-way label agreement 80%. "The person in this picture is feeling" is best or tied | Yes |
+| Components carrying signal | η² of emotion by principal component, last token, layer 50: 0.65, 0.53, 0.36, 0.49, 0.32, then 0.1–0.2. Several components beyond valence carry expression information. For the image-token readout it is mostly PC1 | Reported |
+
+Baselines on the same held-out clips:
+
+| Method | Valence AUC | 4-way negatives | Six-way |
+|---|---|---|---|
+| EV readout, zero-training (chat-prefill, last token) | **0.982** | **0.576** | 5-way incl. happy: 0.551 |
+| Verbal baseline: next-word probabilities over emotion words, same forward pass | 0.978 | 0.460 | 5-way: 0.530 |
+| Zero-shot forced choice by generation | — | 0.322 | 0.459 |
+| MediaPipe blendshapes + logistic regression (trained on dev actors) | 0.943 | 0.579 | 0.535 |
+| HSEmotion, off-the-shelf expression model (trained on AffectNet) | 0.979 | 0.585 | 0.595 |
+| Linear probe on the 171 EV scores (trained on dev actors) | — | — | 0.60 |
+| CREMA-D human raters, face only | — | — | 0.66 |
+
+Reading of the result:
+
+- **The vectors add something over asking the model.** On valence they tie the verbal baseline, but on discriminating negative emotions the readout beats the model's own next-word probabilities by 12 points and its generated answer by 25.
+- **They match, but do not beat, a purpose-built expression model and a trained blendshape regression** on these coarse metrics. That is the expected position for a zero-training readout. Its case rests on the 171-dimensional output, which these labels cannot test; the top-scoring vectors per class are at least sensible: happy → relieved, amused, euphoric; angry → alert, defiant, spiteful; disgusted → disdainful, contemptuous, disgusted; afraid → surprised, alert, astonished; sad → bored, reflective; neutral → bored, indifferent.
+- **The perception-ceiling criterion was built on a false premise.** It assumed that if the model cannot name an expression, no readout can find it. The readout classifies negative emotions at 58% where generation manages 32%: decoding collapses onto a few safe answers (neutral, disgusted) and hides what the activations hold. Generation is a lower bound, not a ceiling, and the gate's 50% threshold should be dropped.
+- **Intensity matters as expected:** 4-way accuracy 63% on CREMA-D's high-intensity takes against 48% on low, and valence AUC 0.99 against 0.97. RAVDESS (larger faces, 720p) scores higher than CREMA-D (faces about 150 px) throughout.
+- **Two frames beat one:** 4-way 57.6% with two frames per clip against 53% with one, the same settings. Averaging over mouth shapes helps, as the design anticipated.
+- **Layouts:** the chat-templated prefill ("<image> ... The person in this picture is feeling", as the model's turn) is best. The raw untemplated layout is weaker on categories, and reading at the turn start before any prefill is weakest. The image-token readout is a strong valence channel even at layer 20 but carries identity.
+- **Layer:** valence is flat across layers 25–50 for the last-token readout; category discrimination peaks at 35–50, matching the design's prediction that "action" layers read the emotion about to be named.
+
+Carried into M2:
+
+- Default configuration: chat-prefill layout, last-token readout, layers 35 (categories) and 50 (valence), medium crop, budget 280, the "feeling" prompt. Keep capturing all layers and the image-token readout; it costs nothing extra.
+- Reference statistics: mean and per-dimension scale fitted on the M1 dev actors (`EVSpace.fit_reference` on `data/acts/pass1`), not on a single neutral image.
+- Per-person baseline from the session mean or a calibration clip of a minute, not from a handful of neutral frames.
+- Average readouts over at least 1–2 s of frames.
+- Expect roughly 4.3 frames per second per L40S with verbal logits, 6 without.
+
+Not done in M1: the crop and token-budget sweep (one crop and one budget were used), and strategy C (generate, then pool), which the result makes unnecessary for now.
+
 **Outcomes**
 
 - **Pass:** continue to M2 with the best one or two configurations.
@@ -200,6 +246,25 @@ Consequences carried forward:
 - Scripted events appear in the series within ±1 s of their marked times, on a visibly distinct trace.
 - Windowed readouts during neutral speech stay within the noise band set at Gate 1.
 - Cost per hour of video is known and acceptable for M4's volume.
+
+**Gate 2 result (2026-11-09): pass on lexical control, speech-motion floor and cost; temporal sanity passes on acted onsets and awaits the self-recorded scripted events. Built and run in a separate session; full report in [docs/results/m2-gate2-report.md](docs/results/m2-gate2-report.md).**
+
+Pipeline as built: 5 fps sampling, one-euro smoothing of the face box, medium crop at 768 px, budget 280, chat-prefill layout, last token; scores at layer 35, valence at layer 50; reference statistics from the M1 dev actors (`results/m1/reference_a2_prefill.npz`); 1.5 s centered windows. Code: `src/cogmirror/video.py`, `src/cogmirror/store.py`, `modal_app/video.py`, `scripts/video_run.py`; the viewer is Rerun, via `scripts/rerun_export.py` (video, the model's crop, and the traces stacked EKG-style on one shared scale; the recorder's WebM takes are transcoded with the bundled ffmpeg). Runs: all 1,440 RAVDESS clips and 575 held-out CREMA-D clips (110 minutes of video, 34,700 frames); about 4.5 GPU-hours.
+
+| Check | Result | Pass? |
+|---|---|---|
+| Lexical control | On valence, emotion explains 73% of variance and sentence 0.4% (ratio 165; RAVDESS 10,000+, CREMA-D 94). On the 171 scores, 59% vs 1.6% | Yes (≥ 3×) |
+| Speech-motion floor | Within-neutral-clip SD of valence 0.42 per frame, 0.23 after 1.5 s windows; happy − negative gap 2.21, so gap/SD is 5 per frame and 10 windowed. Upper-face crops cut the per-frame neutral-speech variance 6× while keeping valence AUC 0.96 (4-way angry/sad drops from 0.88 to 0.77) | Yes |
+| Temporal sanity | Readout onset vs MediaPipe blendshape onset: RAVDESS median lag −0.2 s, 79% within ±1 s (n = 360); CREMA-D +0.2 s, 85% within ±1 s (n = 126). Clearest for happy and surprised; sad and disgusted have no usable blendshape onset. Self-recorded scripted events: not yet recorded | Partial |
+| Cost | 5.9 frames/s per L40S at budget 280 (2.5 at 560): $0.66 / $1.65 / $3.30 per hour of video at 2 / 5 / 10 fps | Yes |
+
+Sanity: the video pipeline reproduces M1 on the same clips (valence AUC 0.99–1.00; 4-way 0.53 on whole-clip means, 0.57 on the middle third, against M1's 0.58 from two stills).
+
+Carried into M4:
+
+- The realized rate inside the Gate 2 calls was 2.6 frames/s, not the benchmark's 5.9, because frames were read one at a time from the Volume in short per-clip chunks. Pack a recording's frames per chunk before the M4 runs.
+- Upper-face crops are a strong lever against speech motion for valence; keep both crops available and let M4 compare them.
+- The scripted-event check (neutral → smile → neutral, a yawn, a frown, with marked times) runs on the first recording session's calibration material.
 
 **If it fails:** if sentence identity dominates, restrict to upper-face crops or pause frames and re-test. If the series is too noisy, lengthen the averaging window and re-check the crop smoothing before concluding anything about the model.
 

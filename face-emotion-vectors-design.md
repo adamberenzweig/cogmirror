@@ -95,6 +95,8 @@ A-style readouts are close to a vector-space form of the model's zero-shot verba
 
 Start with A1 and A2; run B as an experiment and C as a diagnostic.
 
+*Result (M1, acted corpora): A2 with the prompt prefilled as the model's turn is best (valence AUC 0.98, 58% among four negative emotions with no training). A1 is weaker on categories; reading at the turn start before any prefill is weakest. B gives valence as strong as A2 even at layer 20 but carries more identity information, which a per-person baseline removes. Category discrimination peaks at layers 35–50, as predicted for "action" layers.*
+
 ### Frame vs. clip mode
 
 - **Per-frame (default):** independent passes produce a clean time series and parallelize trivially.
@@ -155,7 +157,7 @@ Our pipeline, on released stories, reproduces the released activation caches and
 
 On labeled expression images covering many identities:
 
-1. **Perception ceiling.** The VLM's zero-shot expression recognition (by generation or logits). If the model cannot name the expression, no readout will find it.
+1. **Perception ceiling.** The VLM's zero-shot expression recognition (by generation or logits). *Result (M1): this is a lower bound, not a ceiling. Generation named negative expressions at 32% where the readout reached 58%; decoding collapses onto a few safe answers.*
 2. **Direction check.** PC1 (valence) moves in the expected direction; report AUC for positive versus negative expressions.
 3. **Beyond valence.** After removing valence, does the readout separate same-valence emotions (anger, fear, sadness, disgust)? This tests the claim that the output is usefully high-dimensional. Report how many components carry signal.
 4. **Noise floor.** Readout change under nuisance perturbations (crop jitter, brightness, compression) compared with the change between expressions. If jitter moves the readout as much as a smile does, the time series will be noise.
@@ -216,7 +218,7 @@ Relate readouts to ground truth (experience sampling, task performance, physiolo
 
 - **The VLM may not see subtle expressions.** Vision encoders trained for semantic alignment are coarse on small facial movements. Acted, high-intensity expressions may read well while the low-intensity expressions of someone at a screen (the brief's use case) do not. Gate 1's perception ceiling and noise floor measure this directly. This is the main scientific risk.
 - **Subspace mismatch:** the text-derived vectors may not transfer to image inputs. Strategy B tests this directly; strategy C separates it from readout-position effects.
-- **The vectors may add nothing over asking the model.** If the verbal baseline matches the projection on every metric, the method reduces to zero-shot classification with extra steps.
+- **The vectors may add nothing over asking the model.** If the verbal baseline matches the projection on every metric, the method reduces to zero-shot classification with extra steps. *M1: they tie on valence and beat the verbal baseline by 12 points on negative-emotion discrimination; they match, but do not beat, an off-the-shelf expression model and a trained blendshape regression on coarse labels.*
 - **Readout offset:** without a face-domain reference mean, scores reflect the prompt and modality, not the face.
 - **Perceived vs. felt:** the output is an observer-style description, not internal state.
 - **Low expressivity:** people alone at a screen show little expression, so expect weak signals and the need for per-person baselines.

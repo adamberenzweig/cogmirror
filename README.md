@@ -1,6 +1,6 @@
 # cogmirror
 
-Reading LLM emotion vectors from facial video. See the [brief](cogmirror-brief.md), the [design](face-emotion-vectors-design.md), and the [work plan](face-emotion-vectors-workplan.md).
+Reading LLM emotion vectors from facial video. See the [brief](cogmirror-brief.md), the [design](face-emotion-vectors-design.md), and the [work plan](face-emotion-vectors-workplan.md). Day-to-day instructions for recording and viewing are in [docs/runbook.md](docs/runbook.md).
 
 ## Setup
 
@@ -54,6 +54,34 @@ Gate 0 diagnostic: saves our story activations and reruns a subset under differe
 .venv/bin/modal run --env cogmirror modal_app/app.py::gate0diag
 ```
 
+## M1: static-image feasibility
+
+Data (both corpora to the Volume, face crops, the frame manifest), then the first-pass inference, baselines and analysis:
+
+```bash
+.venv/bin/modal run --env cogmirror modal_app/app.py::m1data
+```
+
+```bash
+.venv/bin/modal run --env cogmirror modal_app/app.py::m1run --run pass1
+```
+
+```bash
+.venv/bin/modal run --env cogmirror modal_app/app.py::m1fer
+```
+
+Then download `/acts/pass1` from the Volume to `data/acts/pass1` and run `scripts/m1_analyze.py --run pass1`. `m1noise` + `scripts/m1_noise.py` give the noise floor; `m1prompts` + `scripts/m1_prompts.py` the prompt robustness; `samples` writes a browsable gallery of clips to `data/samples/index.html`. Results and the written-up gate table are in the work plan.
+
+## Viewer (Rerun)
+
+Time series are inspected in [Rerun](https://rerun.io): video, the crop the model saw, and the traces stacked like an EKG with one shared y-scale. Install the extra once (`.venv/bin/pip install -e ".[viz]"`), then:
+
+```bash
+.venv/bin/python scripts/rerun_export.py --all --open
+```
+
+That exports every processed video under `data/video/` to `data/rerun/<id>.rrd` and opens the native viewer on all of them; the Recordings panel (top left) switches between videos. `--traces valence,pc2,happy,sad,angry` picks the stacked traces (default: valence, the PCs, and the six emotions that vary most in that video); every other trace is still in the recording under `traces/` and can be added from the blueprint panel. `--y-range` sets the shared scale (reference-SD units, default ±3). `scripts/video_run.py ... --rrd` exports as part of a run; `--web` serves the browser viewer instead of the native app.
+
 ## Layout
 
 | Path | Contents |
@@ -63,6 +91,12 @@ Gate 0 diagnostic: saves our story activations and reruns a subset under differe
 | `src/cogmirror/readouts.py` | Image prompt layouts and readout positions |
 | `src/cogmirror/gate0.py` | Reproduction check against the gemotions activation caches |
 | `src/cogmirror/toyfaces.py` | Schematic drawn faces for smoke tests |
+| `src/cogmirror/datasets.py` | CREMA-D and RAVDESS metadata, actor splits |
+| `src/cogmirror/prep.py` | Frame extraction, face detection, crops, blendshapes (runs on Modal CPU) |
+| `src/cogmirror/m1.py` | M1 inference: activations, verbal logits, forced-choice labels |
+| `src/cogmirror/perturb.py` | Nuisance perturbations for the noise floor |
+| `src/cogmirror/metrics.py` | Gate metrics |
+| `src/cogmirror/rerun_export.py` | Rerun recording export (video, crops, stacked traces, blueprint) |
 | `modal_app/app.py` | Modal image, Volume, and remote functions |
 | `scripts/` | Local entry points |
 | `data/`, `results/` | Not in git |

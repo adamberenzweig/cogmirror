@@ -24,6 +24,13 @@ model = [
     "pillow>=10",
 ]
 dev = ["pytest>=8"]
+# Offline analysis on the laptop.
+analysis = ["scikit-learn>=1.5", "pyarrow>=15"]
+# Local video decoding and face tracking (scripts/video_run.py).
+video = ["opencv-python-headless", "mediapipe>=1.2", "pyarrow>=15", "pillow>=10"]
+# The Rerun viewer export (scripts/rerun_export.py). imageio-ffmpeg bundles an
+# ffmpeg binary for transcoding the recorder's WebM files.
+viz = ["rerun-sdk>=0.42", "pyarrow>=15", "imageio-ffmpeg"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
