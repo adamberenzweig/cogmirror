@@ -78,3 +78,30 @@ Options: `--traces valence,pc2,happy,sad,angry` chooses the plotted traces (pres
 ```
 
 then browse to `http://localhost:9090/?url=rerun%2Bhttp%3A%2F%2Flocalhost%3A9876%2Fproxy` (the browser viewer does not find the server on its own).
+
+## 4. Hosted version (share with others)
+
+The recorder, the processing and the viewer links also run as a Modal web app (`modal_app/web.py`), so other people can record takes in their browser without installing anything. Visitors' takes live under `/public` on the Volume, apart from the research recordings.
+
+One-time setup: create the access key secret and upload the projection reference (the stories and narration audio are baked into the image at deploy time). The key is the only protection on the page, so pick something long; keep a copy in `data/web_access_key.txt` (git-ignored):
+
+```bash
+.venv/bin/modal secret create --env cogmirror --force cogmirror-web ACCESS_KEY="$(cat data/web_access_key.txt)"
+```
+
+```bash
+.venv/bin/modal run --env cogmirror modal_app/web.py::setup
+```
+
+Deploy (and redeploy after any change under `src/`, `modal_app/web.py`, `tools/recorder/static/` or `data/stories/`); the model app must be deployed too (`modal deploy --env cogmirror modal_app/video.py`):
+
+```bash
+.venv/bin/modal deploy --env cogmirror modal_app/web.py
+```
+
+The deploy prints the URL. Share it with `?key=<the key>` appended; the first visit sets a cookie, after which `/`, `/status` and the view links work without it. Rotating the key is `modal secret create --force` with a new value plus a redeploy.
+
+How it runs: each kept take is uploaded to the Volume and a Modal function processes it at once (face tracking on CPU, activations through the deployed `cogmirror-video` app, projection against the session's calibration baseline, Rerun export). A story take waits for its session's calibration take to finish first. `/status` lists every take with its stage, timings and a *view* link that opens Rerun's hosted web viewer (app.rerun.io) on that recording; `/api/status` is the same as JSON. Cost per take is a few cents of GPU plus the model container's 10 minutes of warm idle after the last take.
+
+To put locally recorded takes on the hosted version (they are processed there like a visitor's), `scripts/web_upload.py --url <app url> --session <local session> [--as <remote session>] --wait`. To analyse visitor takes locally, download them from the Volume (`modal volume get --env cogmirror cogmirror /public/recordings data/public/recordings`, likewise `/public/video`).
+

@@ -5,7 +5,8 @@
 
 Serves the static app, the story set (data/stories), the narration audio, and
 accepts uploaded takes into data/recordings/<session_id>/<take_id>.{webm,json}.
-Standard library only.
+Standard library only (plus cogmirror.recorder for the take-log helpers,
+which the hosted version in modal_app/web.py shares).
 """
 
 from __future__ import annotations
@@ -24,48 +25,9 @@ from urllib.parse import unquote, urlparse
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 STATIC = HERE / "static"
-SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,80}$")
+sys.path.insert(0, str(REPO / "src"))
 
-
-def scan_recordings(rec_dir: Path) -> dict:
-    """Every take log under data/recordings, plus the set of completed (story, condition) pairs."""
-    takes = []
-    for p in sorted(rec_dir.glob("*/*.json")):
-        try:
-            log = json.loads(p.read_text())
-        except json.JSONDecodeError:
-            continue
-        webm = p.with_suffix(".webm")
-        takes.append({
-            "session_id": log.get("session_id", p.parent.name),
-            "take_id": log.get("take_id", p.stem),
-            "story_id": log.get("story_id"),
-            "condition": log.get("condition"),
-            "bad": bool(log.get("bad")),
-            "duration_s": log.get("duration_s"),
-            "has_video": webm.exists(),
-            "video_bytes": webm.stat().st_size if webm.exists() else 0,
-            "start_wallclock": log.get("start_wallclock"),
-        })
-    done = sorted({(t["story_id"], t["condition"]) for t in takes
-                   if t["story_id"] and not t["bad"] and t["has_video"] and t["condition"] in ("read", "listen")})
-    sessions = sorted({t["session_id"] for t in takes})
-    return {"takes": takes, "done": [list(d) for d in done], "sessions": sessions}
-
-
-def load_stories(stories_dir: Path) -> list[dict]:
-    path = stories_dir / "stories.jsonl"
-    if not path.exists():
-        return []
-    out = []
-    for line in path.read_text().splitlines():
-        if not line.strip():
-            continue
-        r = json.loads(line)
-        idx = stories_dir / "audio" / r["id"] / "index.json"
-        r["audio"] = json.loads(idx.read_text()) if idx.exists() else None
-        out.append(r)
-    return out
+from cogmirror.recorder import SAFE_ID, load_stories, scan_recordings  # noqa: E402
 
 
 class Handler(BaseHTTPRequestHandler):

@@ -17,81 +17,25 @@ Outputs under --work/<name>/ (default data/video/<name>/):
 Baselines: --baseline none | session | <baseline.json>. `session` subtracts
 this video's own mean. --save-baseline writes the mean of this video as a
 baseline file for later runs (e.g. from a calibration clip).
+
+The steps themselves are in cogmirror.pipeline; this is the local entry point
+that runs the activations on Modal.
 """
 
 from __future__ import annotations
 
 import argparse
-import io
-import json
 import sys
-import time
 from pathlib import Path
-
-import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from cogmirror import store, video  # noqa: E402
+from cogmirror import pipeline, rerun_export, store, video  # noqa: E402
 
 LANDMARKER = "data/models/face_landmarker.task"
 REFERENCE = "results/m1/reference_a2_prefill.npz"
 GEMOTIONS = "data/gemotions"
-
-
-def track(args, work: Path) -> tuple[list[dict], dict]:
-    frames_dir = work / "frames"
-    if (frames_dir / "frames.jsonl").exists() and not args.force:
-        recs, info = video.read_manifest(frames_dir)
-        print(f"frames: {len(recs)} already tracked under {frames_dir}")
-        return recs, info
-    lm = video.make_landmarker(args.landmarker)
-    t0 = time.time()
-    recs, info = video.track_video(args.video, lm, frames_dir, rate=args.fps,
-                                   smoother=video.BoxSmoother(max_gap=args.max_gap), progress=print)
-    print(f"frames: {info['n_sampled']} sampled at {args.fps} fps, {info['n_faces']} detections, {info['n_crops']} crops, "
-          f"{time.time() - t0:.1f}s")
-    return recs, info
-
-
-def infer(args, work: Path, recs: list[dict]) -> Path:
-    frames = video.frames_with_crops(recs)
-    acts_dir = work / "acts"
-    chunks = store.plan_chunks(len(frames), args.chunk_frames)
-    todo = [c for c in chunks if args.force or not store.chunk_done(acts_dir, c[0])]
-    print(f"acts: {len(chunks)} chunks, {len(todo)} to compute")
-    if not todo:
-        return acts_dir
-    from modal_app import video as mv
-
-    frames_dir = work / "frames"
-    specs, payloads = [], []
-    for k, s, e in todo:
-        part = frames[s:e]
-        specs.append({"video_id": work.name, "chunk": k, "files": [f["file"] for f in part],
-                      "frame_index": [f["frame_index"] for f in part], "t": [f["t"] for f in part],
-                      "store": "", "crop": args.crop, "budget": args.budget})
-        payloads.append({f["file"]: (frames_dir / f["file"]).read_bytes() for f in part})
-    t0 = time.time()
-    jobs = [([s], p) for s, p in zip(specs, payloads)]
-    deployed = None if args.ephemeral else deployed_infer(mv.APP, args.env)
-    if deployed is not None:
-        print(f"acts: using the deployed {mv.APP} app (its containers keep the model loaded between takes; "
-              "redeploy after code changes: modal deploy modal_app/video.py --env <env>)")
-        results = list(deployed().run.starmap(jobs, kwargs={"batch_size": args.batch_size}))
-    else:
-        with mv.app.run(environment_name=args.env):
-            results = list(mv.Infer().run.starmap(jobs, kwargs={"batch_size": args.batch_size}))
-    gpu_s = 0.0
-    for res in results:
-        for r in res:
-            with np.load(io.BytesIO(r["npz"]), allow_pickle=False) as z:
-                store.save_chunk(acts_dir, r["chunk"], {k: z[k] for k in z.files})
-            gpu_s += r["seconds"]
-    print(f"acts: {sum(len(s['files']) for s in specs)} frames in {time.time() - t0:.0f}s wall, "
-          f"{gpu_s:.0f}s GPU compute (plus model load), {results[0][0]['gpu']}")
-    return acts_dir
 
 
 def deployed_infer(app_name: str, env: str):
@@ -112,37 +56,21 @@ def deployed_infer(app_name: str, env: str):
         return None
 
 
-def project(args, work: Path, recs: list[dict], acts_dir: Path, info: dict) -> Path:
-    acts = store.load_store(acts_dir)
-    cfg = store.ProjectionConfig(readout=args.readout, score_layer=args.score_layer, valence_layer=args.valence_layer,
-                                 n_pcs=args.pcs)
-    spaces = store.load_spaces(args.gemotions, [cfg.score_layer, cfg.valence_layer], cfg.n_pcs)
-    refs, _ = store.load_reference(args.reference)
-    proj = store.project(acts, spaces, refs, cfg)
-    if args.save_baseline:
-        store.fit_baseline(proj, source=str(args.video)).save(args.save_baseline)
-        print("baseline: saved", args.save_baseline)
-    if args.baseline == "session":
-        proj = store.apply_baseline(proj, store.fit_baseline(proj, source="session"))
-    elif args.baseline not in ("", "none"):
-        proj = store.apply_baseline(proj, store.Baseline.load(args.baseline))
-    scfg = store.SeriesConfig(window=args.window, ema_tau=args.ema, projection=cfg)
-    cols = store.build_series(proj, scfg, frames=recs)
-    meta = store.series_metadata(scfg, {"video": str(args.video), "fps_sampled": args.fps, "crop": args.crop,
-                                        "budget": args.budget, "baseline": args.baseline, "reference": args.reference,
-                                        "duration_s": info.get("duration"), "source_fps": info.get("fps")})
-    out = work / f"{work.name}.parquet"
-    store.write_parquet(out, cols, meta)
-    v = cols["valence"][np.isfinite(cols["valence"])]
-    print(f"series: {len(cols['t'])} rows -> {out}; valence mean {v.mean():+.2f} sd {v.std():.2f} "
-          f"(range {v.min():+.2f} .. {v.max():+.2f}); top at mid-clip: {cols['top1'][len(v) // 2]}, {cols['top2'][len(v) // 2]}")
-    if args.rrd:
-        from cogmirror import rerun_export
+def modal_run_jobs(env: str, ephemeral: bool):
+    """`run_jobs` for the pipeline: the deployed Infer class when there is one, else an ephemeral app."""
+    from modal_app import video as mv
 
-        rrd = rerun_export.rrd_path(args.rrd_dir, work)
-        rerun_export.export(work, rrd, traces=args.traces)
-        print(f"rerun -> {rrd}  (open with: .venv/bin/python -m rerun {rrd})")
-    return out
+    deployed = None if ephemeral else deployed_infer(mv.APP, env)
+
+    def run_jobs(jobs, batch_size):
+        if deployed is not None:
+            print(f"acts: using the deployed {mv.APP} app (its containers keep the model loaded between takes; "
+                  "redeploy after code changes: modal deploy modal_app/video.py --env <env>)")
+            return list(deployed().run.starmap(jobs, kwargs={"batch_size": batch_size}))
+        with mv.app.run(environment_name=env):
+            return list(mv.Infer().run.starmap(jobs, kwargs={"batch_size": batch_size}))
+
+    return run_jobs
 
 
 def main():
@@ -178,12 +106,19 @@ def main():
 
     name = args.name or Path(args.video).stem
     work = Path(args.work) / name
-    work.mkdir(parents=True, exist_ok=True)
-    recs, info = track(args, work)
+    s = pipeline.Settings(fps=args.fps, max_gap=args.max_gap, crop=args.crop, budget=args.budget, batch_size=args.batch_size,
+                          chunk_frames=args.chunk_frames, readout=args.readout, score_layer=args.score_layer,
+                          valence_layer=args.valence_layer, n_pcs=args.pcs, window=args.window, ema=args.ema,
+                          landmarker=args.landmarker, gemotions=args.gemotions, reference=args.reference)
     if args.track_only:
+        work.mkdir(parents=True, exist_ok=True)
+        pipeline.track(args.video, work, s, args.force)
         return
-    acts_dir = infer(args, work, recs)
-    project(args, work, recs, acts_dir, info)
+    rrd = rerun_export.rrd_path(args.rrd_dir, work) if args.rrd else None
+    pipeline.process(args.video, work, modal_run_jobs(args.env, args.ephemeral), s, baseline=args.baseline,
+                     save_baseline=args.save_baseline, rrd=rrd, traces=args.traces, force=args.force)
+    if rrd is not None:
+        print(f"(open with: .venv/bin/python -m rerun {rrd})")
 
 
 if __name__ == "__main__":

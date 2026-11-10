@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cogmirror: processing status</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #444; vertical-align: top; }
+  th { color: #aaa; font-weight: normal; }
+  td.stage { white-space: nowrap; }
+  .st-done { color: #7c6; }
+  .st-failed { color: #e66; }
+  .st-busy { color: #fc6; }
+  .st-wait { color: #aaa; }
+  .err { color: #e66; font-size: 12px; white-space: pre-wrap; }
+  .small { color: #aaa; font-size: 12px; }
+</style>
+</head>
+<body>
+<main class="screen">
+  <h1>Processing status</h1>
+  <p class="muted"><a href="/">Recorder</a> · refreshes every 10 s · <span id="summary">loading…</span></p>
+  <table>
+    <thead><tr><th>session</th><th>take</th><th>story</th><th>target</th><th>length</th><th>stage</th><th>timings</th><th>result</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</main>
+<script>
+const CLASS = { done: "st-done", failed: "st-failed", tracking: "st-busy", model: "st-busy", series: "st-busy", export: "st-busy", queued: "st-wait", uploaded: "st-wait" };
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function fmtTimings(t) { return Object.entries(t || {}).map(([k, v]) => `${k} ${v}s`).join(", "); }
+async function refresh() {
+  let data;
+  try {
+    data = await fetch("/api/status", { cache: "no-store" }).then((r) => r.json());
+  } catch (e) {
+    document.querySelector("#summary").textContent = `status unavailable: ${e}`;
+    return;
+  }
+  const rows = data.rows;
+  const n = { done: 0, failed: 0, busy: 0 };
+  for (const r of rows) { if (r.stage === "done") n.done++; else if (r.stage === "failed") n.failed++; else if (CLASS[r.stage] === "st-busy" || r.stage === "queued") n.busy++; }
+  document.querySelector("#summary").textContent = `${rows.length} takes: ${n.done} done, ${n.busy} in progress, ${n.failed} failed`;
+  document.querySelector("#rows").innerHTML = rows.map((r) => {
+    const cls = CLASS[r.stage] || "st-wait";
+    const result = r.stage === "done" && r.rrd
+      ? `<a href="/view/${esc(r.session_id)}/${esc(r.take_id)}" target="_blank">view</a>` +
+        (r.summary ? `<div class="small">valence ${r.summary.valence_mean} ± ${r.summary.valence_sd}; ${(r.summary.top_mid || []).join(", ")}</div>` : "")
+      : r.error ? `<div class="err">${esc(r.error)}</div>` : "";
+    return `<tr><td>${esc(r.session_id)}</td><td>${esc(r.take_id)}</td><td>${esc(r.story_id || (r.kind === "calibration" ? "calibration" : ""))}</td>` +
+      `<td>${esc((r.emotions || []).join(", "))}</td><td>${r.duration_s ? r.duration_s.toFixed(1) + " s" : ""}</td>` +
+      `<td class="stage ${cls}">${esc(r.stage)}</td><td class="small">${esc(fmtTimings(r.timings))}</td><td>${result}</td></tr>`;
+  }).join("");
+}
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>

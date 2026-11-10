@@ -11,6 +11,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const params = new URLSearchParams(location.search);
 const FAKE = params.get("fake") === "1";           // synthetic stream for testing without a camera
 const CALIBRATION_S = Number(params.get("calib") || 15);  // ?calib=60 for a longer one
+const HOSTED = !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);  // modal_app/web.py vs tools/recorder/serve.py
 const LEAD_IN_S = 1.5, TAIL_S = 1.5, LISTEN_GAP_MS = 500;
 
 const state = {
@@ -360,12 +361,18 @@ async function runSession() {
   $("#done-summary").textContent =
     `session ${state.sessionId}\n${state.takes.length} takes recorded, ${kept.length} kept, ${state.takes.length - kept.length} marked bad\n` +
     `${state.queue.length} queued pairs not recorded\n\n` + state.takes.map((t) => `${t.take_id}  ${t.duration_s.toFixed(1)} s${t.bad ? "  BAD" : ""}`).join("\n") +
-    `\n\nfiles: data/recordings/${state.sessionId}/`;
+    (HOSTED ? `\n\nEach kept take is being processed on the server; results appear on the status page.` : `\n\nfiles: data/recordings/${state.sessionId}/`);
   for (const t of state.stream.getTracks()) t.stop();
 }
 
 // ------------------------------------------------------------------- boot
 async function boot() {
+  if (HOSTED) {
+    $("#where").textContent = "Takes are uploaded to the cogmirror server, stored there, and processed by the model; nothing is public.";
+    $("#status-link").classList.remove("hidden");
+    const done = document.querySelector("#done");
+    if (done) done.insertAdjacentHTML("beforeend", '<p><a href="/status">Processing status</a></p>');
+  }
   $("#session-id").value = defaultSessionId();
   for (const c of document.querySelectorAll(".must")) c.addEventListener("change", updateStartButton);
   $("#start-camera").addEventListener("click", startCamera);

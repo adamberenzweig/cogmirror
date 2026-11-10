@@ -88,6 +88,10 @@ Time series are inspected in [Rerun](https://rerun.io): video, the crop the mode
 
 That exports every processed video under `data/video/` to `data/rerun/<id>.rrd` and opens the browser viewer on all of them; the Sources panel (top left) switches between videos. `--traces valence,pc2,happy,sad,angry` picks the stacked traces (default, per video: valence, the PCs, the story's target emotions, and the six emotions most often in the frame-level top three over the clip); every other trace is still in the recording under `traces/` and can be added from the blueprint panel. `--y-range` sets the shared scale (reference-SD units, default ±3). `scripts/video_run.py ... --rrd` exports as part of a run; `--native` opens the native app instead of the browser (it needs `ffmpeg` to play the video).
 
+## Hosted recorder
+
+`modal_app/web.py` serves the recorder, processes uploaded takes on Modal and links to Rerun's hosted viewer, behind a shared access key. Setup and deploy steps are in [docs/runbook.md](docs/runbook.md#4-hosted-version-share-with-others).
+
 ## Layout
 
 | Path | Contents |
@@ -104,5 +108,9 @@ That exports every processed video under `data/video/` to `data/rerun/<id>.rrd` 
 | `src/cogmirror/metrics.py` | Gate metrics |
 | `src/cogmirror/rerun_export.py` | Rerun recording export (video, audio, crops, story, traces, blueprint) |
 | `modal_app/app.py` | Modal image, Volume, and remote functions |
+| `modal_app/video.py` | Video pipeline on Modal: tracking and the deployed activation class |
+| `modal_app/web.py` | Hosted recorder: web app, per-take processing, status, viewer links |
+| `src/cogmirror/pipeline.py` | One video to a time series: the steps behind `scripts/video_run.py` and the hosted app |
+| `src/cogmirror/recorder.py` | Take logs, story set, processing status |
 | `scripts/` | Local entry points |
 | `data/`, `results/` | Not in git |
