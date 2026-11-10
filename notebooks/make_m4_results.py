@@ -289,7 +289,197 @@ fig.tight_layout(); save(fig, "06_example_traces"); plt.show()
 """)
 
 md("""
-## 7. The gate table, for the record
+## 8. Emotion profiles from the takes: clusters and UMAP
+
+Every sampled frame of every reading and calibration take gives a 171-score emotion profile (windowed, baselined against the session's calibration). Here they are standardized per score, clustered with k-means, and embedded with UMAP, in the spirit of the paper's figure 6. Each cluster is labelled with the paper's Table 12 cluster of its centroid's strongest emotions and with the most frequent frame-level top-1 tags, and shown with the face crops nearest its centroid. Crops of takes recorded on the hosted version are fetched from the Volume on demand.
+""")
+
+code("""
+import subprocess
+from PIL import Image
+from matplotlib.offsetbox import AnnotationBbox, OffsetImage
+from sklearn.cluster import KMeans
+import umap
+
+from cogmirror import stories as S
+
+K = 8   # clusters; the palette has eight categorical slots, so each cluster keeps its own hue
+rows_f, profiles = [], []
+EMOS = None
+for sess in sorted(p.name for p in (ROOT / "data" / "recordings").iterdir() if p.is_dir()):
+    for pq_path in sorted((ROOT / "data" / "video" / sess).glob("*/*.parquet")):
+        take = pq_path.parent.name
+        cond = take.split("_")[-1]
+        if cond not in (COND, "calibration"):
+            continue
+        cols, meta = store.read_parquet(pq_path)
+        if EMOS is None:
+            EMOS = [c[len("score_"):] for c in cols if c.startswith("score_")]
+        okf = np.isfinite(cols["valence"])
+        P = np.stack([cols[f"score_{e}"] for e in EMOS], axis=1)[okf]
+        story = take.split("_")[1] if cond == COND else None
+        for fi, t, top1 in zip(cols["frame_index"][okf], cols["t"][okf], cols["top1"][okf]):
+            rows_f.append({"session": sess, "take": take, "story": story, "frame_index": int(fi), "t": float(t), "top1": str(top1),
+                           "pol": polarity(story) if story else None, "cond": cond})
+        profiles.append(P)
+P = np.vstack(profiles)
+Z = (P - P.mean(0)) / (P.std(0) + 1e-9)
+print(f"{len(P)} frames from {len({(r['session'], r['take']) for r in rows_f})} takes, {len(EMOS)} scores; window {meta.get('window_s')} s")
+
+km = KMeans(n_clusters=K, n_init=10, random_state=0).fit(Z)
+lab = km.labels_
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    emb = umap.UMAP(n_neighbors=30, min_dist=0.15, metric="cosine", random_state=0).fit_transform(Z)
+
+PAPER = list(S.CLUSTERS)                      # the paper's ten clusters, ordered by valence
+POSITIVE = set(PAPER[:5])
+
+def cluster_tags(k, n=3):
+    \"\"\"What sets a cluster apart from the other frames: the paper cluster whose emotions score highest
+    in the standardized centroid, the top emotions of that centroid, and the stories contributing most frames.\"\"\"
+    c = Z[lab == k].mean(0)
+    by_paper = {pc: np.mean([c[i] for i, e in enumerate(EMOS) if S.CLUSTER_OF.get(e) == pc]) for pc in PAPER}
+    paper_name = max(by_paper, key=by_paper.get)
+    top = [EMOS[i] for i in np.argsort(-c)[:n]]
+    members = [r for r, l in zip(rows_f, lab) if l == k]
+    vals, counts = np.unique([r["story"] or "calibration" for r in members], return_counts=True)
+    share = {v: cnt / len(members) for v, cnt in zip(vals, counts)}
+    mostly = [(f"{v} {', '.join(stories[v]['emotions'] or ['neutral'])}" if v in stories else v) + f" ({share[v]:.0%})"
+              for v in sorted(share, key=share.get, reverse=True)[:2]]
+    return paper_name, top, mostly
+
+def valence_score(k):
+    c = Z[lab == k].mean(0)
+    return np.mean([c[i] for i, e in enumerate(EMOS) if S.CLUSTER_OF.get(e) in POSITIVE]) - \
+        np.mean([c[i] for i, e in enumerate(EMOS) if S.CLUSTER_OF.get(e) not in POSITIVE])
+
+order = sorted(range(K), key=valence_score)   # most negative cluster first
+tags = {k: cluster_tags(k) for k in range(K)}
+number = {k: i + 1 for i, k in enumerate(order)}
+for k in order:
+    paper_name, top, mostly = tags[k]
+    print(f"{number[k]}. ({(lab == k).sum():4d} frames) {paper_name:24s} {', '.join(top):36s} mostly {'; '.join(mostly)}")
+""")
+
+code("""
+def crop_path(session, take, frame_index):
+    p = ROOT / "data" / "video" / session / take / "frames" / f"f{frame_index:06d}.jpg"
+    if not p.exists():   # a take recorded on the hosted version: fetch that one crop from the Volume
+        p.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run([str(ROOT / ".venv" / "bin" / "modal"), "volume", "get", "--env", "cogmirror", "--force", "cogmirror",
+                        f"/public/video/{session}/{take}/frames/{p.name}", str(p)], capture_output=True)
+    return p if p.exists() else None
+
+def thumb(session, take, frame_index, px=72):
+    p = crop_path(session, take, frame_index)
+    if p is None:
+        return None
+    im = Image.open(p).convert("RGB"); im.thumbnail((px, px))
+    return np.asarray(im)
+
+def representatives(k, n=4):
+    idx = np.nonzero(lab == k)[0]
+    d = np.linalg.norm(Z[idx] - km.cluster_centers_[k], axis=1)
+    picks, seen = [], set()
+    for i in idx[np.argsort(d)]:          # nearest to the centroid, at most one per take
+        key = (rows_f[i]["session"], rows_f[i]["take"])
+        if key in seen:
+            continue
+        seen.add(key); picks.append(i)
+        if len(picks) == n:
+            break
+    return picks
+
+CLUSTER_COLORS = [C["blue"], C["orange"], C["aqua"], C["yellow"], C["magenta"], C["green"], C["violet"], C["red"]]
+fig, axes = plt.subplots(1, 3, figsize=(16, 5.4))
+# (a) clusters, with a thumbnail and the tags at each cluster's median position
+ax = axes[0]
+for rank, k in enumerate(order):
+    m = lab == k
+    ax.scatter(emb[m, 0], emb[m, 1], s=5, color=CLUSTER_COLORS[rank], alpha=0.55, edgecolor="none", label=f"{tags[k][0]}")
+for rank, k in enumerate(order):
+    m = lab == k
+    cx, cy = np.median(emb[m, 0]), np.median(emb[m, 1])
+    ax.text(cx, cy, str(number[k]), ha="center", va="center", fontsize=9, fontweight="bold", color="white",
+            bbox=dict(boxstyle="circle,pad=0.25", fc=CLUSTER_COLORS[rank], ec="white", lw=1.2))
+handles = [plt.Line2D([], [], marker="o", ls="", color=CLUSTER_COLORS[rank], ms=7,
+                      label=f"{number[k]}  {tags[k][0]}: {', '.join(tags[k][1])}") for rank, k in enumerate(order)]
+ax.set_title(f"k-means (k={K}), numbered most negative → most positive")
+ax.legend(handles=handles, fontsize=7, loc="upper right", title="paper cluster: strongest emotions (standardized)", title_fontsize=7)
+# (b) story polarity
+ax = axes[1]
+pol = np.array([{1: 1, -1: -1}.get(r["pol"], 0) for r in rows_f]); calib = np.array([r["cond"] == "calibration" for r in rows_f])
+for val, col, name in ((0, NEU_COL, "neutral, mixed or calibration"), (-1, NEG_COL, "negative story"), (1, POS_COL, "positive story")):
+    m = (pol == val) & ~(calib & (val != 0))
+    ax.scatter(emb[m, 0], emb[m, 1], s=5, color=col, alpha=0.5, edgecolor="none", label=name)
+ax.scatter(emb[calib, 0], emb[calib, 1], s=9, facecolor="none", edgecolor=C["ink"], lw=0.5, label="calibration frames")
+ax.set_title("colored by the story being read"); ax.legend(fontsize=8, markerscale=3)
+# (c) session
+ax = axes[2]
+sessions = sorted({r["session"] for r in rows_f})
+for i, sess in enumerate(sessions):
+    m = np.array([r["session"] == sess for r in rows_f])
+    ax.scatter(emb[m, 0], emb[m, 1], s=5, color=CLUSTER_COLORS[i], alpha=0.5, edgecolor="none", label=sess)
+ax.set_title("colored by session"); ax.legend(fontsize=8, markerscale=3)
+for ax in axes:
+    ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
+fig.suptitle(f"UMAP of {len(P)} frame-level emotion profiles (171 scores, standardized; cosine metric)", y=1.01)
+fig.tight_layout(); save(fig, "07_profile_umap"); plt.show()
+""")
+
+code("""
+n_rep = 5
+fig, axes = plt.subplots(K, n_rep, figsize=(1.55 * n_rep + 3.2, 1.6 * K))
+for row, k in enumerate(order):
+    reps = representatives(k, n_rep)
+    paper_name, top, mostly = tags[k]
+    for col in range(n_rep):
+        ax = axes[row, col]; ax.axis("off")
+        if col < len(reps):
+            r = rows_f[reps[col]]
+            im = thumb(r["session"], r["take"], r["frame_index"], 160)
+            if im is not None:
+                ax.imshow(im)
+            ax.set_title(f"{r['take'].split('_')[1]} {r['t']:.0f}s", fontsize=7, color=C["ink2"])
+    axes[row, 0].text(-0.08, 0.5, f"{number[k]}. {paper_name}\\n{', '.join(top)}\\nmostly {mostly[0]}\\n{(lab == k).sum()} frames",
+                      transform=axes[row, 0].transAxes, ha="right", va="center", fontsize=8, color=CLUSTER_COLORS[row], fontweight="bold")
+fig.suptitle("Frames nearest each cluster centroid (one per take), with the cluster's tags", y=1.0)
+fig.tight_layout(); save(fig, "08_cluster_thumbnails"); plt.show()
+""")
+
+md("""
+### Cluster profiles over the paper's ten clusters
+
+Each row is one of our frame clusters; each column one of the paper's Table 12 clusters (ordered by valence). The cell is the centroid's mean standardized score over that cluster's emotions. A readout that organizes like the paper would show one strong column per row, moving from the warm to the cool side down the rows.
+""")
+
+code("""
+from matplotlib.colors import LinearSegmentedColormap
+paper_clusters = list(S.CLUSTERS)
+M_ = np.zeros((K, len(paper_clusters)))
+for row, k in enumerate(order):
+    c = Z[lab == k].mean(0)
+    for j, pc in enumerate(paper_clusters):
+        idx = [i for i, e in enumerate(EMOS) if S.CLUSTER_OF.get(e) == pc]
+        M_[row, j] = c[idx].mean() if idx else np.nan
+div = LinearSegmentedColormap.from_list("div", [NEG_COL, "#f4f3f0", POS_COL])
+fig, ax = plt.subplots(figsize=(9, 0.5 * K + 1.6))
+v = np.nanmax(np.abs(M_))
+im = ax.imshow(M_, cmap=div, vmin=-v, vmax=v, aspect="auto")
+ax.set_xticks(range(len(paper_clusters))); ax.set_xticklabels(paper_clusters, rotation=35, ha="right", fontsize=8)
+ax.set_yticks(range(K)); ax.set_yticklabels([f"{number[k]}. {tags[k][0]}: {', '.join(tags[k][1][:2])}" for k in order], fontsize=8)
+for i in range(K):
+    for j in range(len(paper_clusters)):
+        ax.text(j, i, f"{M_[i, j]:+.1f}", ha="center", va="center", fontsize=7, color=C["ink"])
+ax.grid(False); fig.colorbar(im, ax=ax, shrink=0.8, label="mean standardized score")
+ax.set_title("Frame clusters (rows) against the paper's emotion clusters (columns)")
+fig.tight_layout(); save(fig, "09_cluster_profiles"); plt.show()
+""")
+
+md("""
+## 9. The gate table, for the record
 """)
 
 code("""

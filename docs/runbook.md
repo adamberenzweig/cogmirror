@@ -93,7 +93,7 @@ The plots are in `notebooks/m4_results.ipynb` (install the extra once: `.venv/bi
 .venv/bin/jupyter nbconvert --to notebook --execute --inplace notebooks/m4_results.ipynb
 ```
 
-The notebook is generated from `notebooks/make_m4_results.py` so the cells stay reviewable as code; edit that file, regenerate, re-execute.
+The notebook is generated from `notebooks/make_m4_results.py` so the cells stay reviewable as code; edit that file, regenerate, re-execute. Its last section clusters the frame-level emotion profiles of every take and embeds them with UMAP, with the paper's cluster names, the dominant tags and face thumbnails per cluster; thumbnails of takes recorded on the hosted version are fetched from the Volume one crop at a time.
 
 Takes recorded on the hosted version live on the Volume; pull a session's logs and series before analysing (`modal volume get --env cogmirror cogmirror /public/recordings/<session> data/recordings/` and each take's `.parquet` and `frames/frames.jsonl` under `/public/video/<session>/` into `data/video/<session>/`).
 
