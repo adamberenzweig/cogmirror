@@ -12,7 +12,7 @@
 <!-- ---------------------------------------------------------------- setup -->
 <section id="setup" class="screen">
   <h1>cogmirror recorder</h1>
-  <p class="muted">Milestone 3: reading and listening takes. Nothing leaves this machine; takes are written under <code>data/recordings/&lt;session&gt;/</code>.</p>
+  <p class="muted">Milestone 3: reading takes (listening takes optional). Nothing leaves this machine; takes are written under <code>data/recordings/&lt;session&gt;/</code>.</p>
 
   <div class="cols">
     <div>
@@ -21,7 +21,7 @@
         <li><label><input type="checkbox" class="must"> Same lighting as previous sessions: lamps on, blinds as before, no window behind you</label></li>
         <li><label><input type="checkbox" class="must"> Same framing: camera at eye height, face filling roughly the middle third, do not move the laptop during the session</label></li>
         <li><label><input type="checkbox" class="must"> Text appears at the top of the screen, right under the lens. Sit so that reading it keeps your eyes near the lens</label></li>
-        <li><label><input type="checkbox" class="must"> Microphone unmuted, speakers on for the listening takes, phone silenced</label></li>
+        <li><label><input type="checkbox" class="must"> Microphone unmuted, phone silenced (speakers on if recording listening takes)</label></li>
       </ul>
 
       <h2>Session</h2>
@@ -29,7 +29,7 @@
       <label>Takes this session (excluding calibration) <input id="n-takes" type="number" min="1" max="200" value="12"></label>
       <label><input id="allow-repeat" type="checkbox"> Allow (story, condition) pairs that were already recorded</label>
       <label><input id="self-view" type="checkbox"> Show a small self view during takes (off by default: it pulls the eyes away from the lens)</label>
-      <label>Only this condition <select id="only-condition"><option value="">both, interleaved</option><option value="read">reading only</option><option value="listen">listening only</option></select></label>
+      <label>Only this condition <select id="only-condition"><option value="read" selected>reading only (default)</option><option value="">both, interleaved</option><option value="listen">listening only</option></select></label>
       <p id="progress-summary" class="muted">loading progress…</p>
     </div>
 
@@ -43,7 +43,7 @@
     </div>
   </div>
 
-  <p><button id="start-session" disabled>Start session (60 s calibration first)</button></p>
+  <p><button id="start-session" disabled>Start session (calibration first)</button></p>
   <p id="setup-error" class="error"></p>
 </section>
 

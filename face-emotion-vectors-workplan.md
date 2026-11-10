@@ -283,7 +283,7 @@ Carried into M4:
 2. **Narration** for the listening condition: synthesized or recorded audio with word timestamps.
 3. **Recording protocol.**
    - Fixed camera, lighting, and framing within a session; text or teleprompter close to the lens.
-   - Each session begins with a 60 s neutral calibration clip.
+   - Each session begins with a 15 s neutral calibration clip (its mean is the session baseline). Reading takes only by default; listening takes are optional, since Gate 2 showed speech motion adds noise but no emotion-specific content and the narration audio is too flat to carry the stories.
    - Randomized story order, emotions interleaved; at least three sessions on different days.
    - Reading condition: preview the story silently, then read aloud expressively. Listening condition: watch the lens and listen.
    - Hold out one full session and a set of stories that are never used for tuning.

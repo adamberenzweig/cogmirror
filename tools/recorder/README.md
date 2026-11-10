@@ -35,11 +35,17 @@ stream and a 3-second calibration. Takes made that way carry `fake_stream: true`
    about 20 minutes). Leave *Allow repeats* off: the tool reads every log under
    `data/recordings/` and never offers a (story, condition) pair that already
    has a good take.
-2. **Calibration.** Every session starts with a 60 s neutral take: look at the
-   lens, relaxed face, no talking. Press space to start.
+2. **Calibration.** Every session starts with a 15 s neutral take: look at the
+   lens, relaxed face, no talking. Press space to start. Its mean is the
+   session baseline that `scripts/m4_run_videos.py` subtracts from the other
+   takes, so 15 s (75 frames at 5 fps) is plenty; `?calib=60` on the URL makes
+   it longer.
 3. **Takes.** The queue is a random order of (story, condition) pairs, seeded by
    the session id, arranged so that consecutive takes differ in story, emotion
-   cluster and condition. The screen stays the same grey throughout so the light
+   cluster and condition. *Only this condition* defaults to reading only: the
+   Gate 2 speech-motion check showed speech adds noise but no emotion-specific
+   content, and the narration audio is too flat to carry the stories, so
+   listening takes are off unless selected. The screen stays the same grey throughout so the light
    on the face does not change between screens.
    - **Reading.** The whole story appears first; read it silently. Press space
      when ready: recording starts immediately and the first sentence appears

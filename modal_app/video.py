@@ -32,6 +32,7 @@ GPU = "L40S"            # one GPU type only: deep-layer activations shift with a
 MAX_GPUS = 7            # leave room under the 10-GPU workspace cap for other jobs
 GPU_HOUR_USD = 1.95
 CHUNK_FRAMES = 300      # frames per store chunk and per GPU call
+SCALEDOWN_S = 600       # keep the loaded model around between takes of a recording session (~$0.03 per idle minute)
 DEFAULT_RATE = 5.0
 
 app = modal.App(APP)
@@ -169,7 +170,7 @@ def list_stores_remote(run: str) -> dict[str, list[int]]:
 # --------------------------------------------------------------------------
 
 @app.cls(image=image, volumes={VOL: volume}, gpu=GPU, memory=65536, timeout=90 * 60,
-         max_containers=MAX_GPUS, scaledown_window=120)
+         max_containers=MAX_GPUS, scaledown_window=SCALEDOWN_S)
 class Infer:
     """One model per container; `run` processes a list of chunk specs.
 

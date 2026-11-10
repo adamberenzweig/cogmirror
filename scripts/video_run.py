@@ -74,9 +74,15 @@ def infer(args, work: Path, recs: list[dict]) -> Path:
                       "store": "", "crop": args.crop, "budget": args.budget})
         payloads.append({f["file"]: (frames_dir / f["file"]).read_bytes() for f in part})
     t0 = time.time()
-    with mv.app.run(environment_name=args.env):
-        inf = mv.Infer()
-        results = list(inf.run.starmap([([s], p) for s, p in zip(specs, payloads)], kwargs={"batch_size": args.batch_size}))
+    jobs = [([s], p) for s, p in zip(specs, payloads)]
+    deployed = None if args.ephemeral else deployed_infer(mv.APP, args.env)
+    if deployed is not None:
+        print(f"acts: using the deployed {mv.APP} app (its containers keep the model loaded between takes; "
+              "redeploy after code changes: modal deploy modal_app/video.py --env <env>)")
+        results = list(deployed().run.starmap(jobs, kwargs={"batch_size": args.batch_size}))
+    else:
+        with mv.app.run(environment_name=args.env):
+            results = list(mv.Infer().run.starmap(jobs, kwargs={"batch_size": args.batch_size}))
     gpu_s = 0.0
     for res in results:
         for r in res:
@@ -86,6 +92,24 @@ def infer(args, work: Path, recs: list[dict]) -> Path:
     print(f"acts: {sum(len(s['files']) for s in specs)} frames in {time.time() - t0:.0f}s wall, "
           f"{gpu_s:.0f}s GPU compute (plus model load), {results[0][0]['gpu']}")
     return acts_dir
+
+
+def deployed_infer(app_name: str, env: str):
+    """The Infer class of a deployed app (`modal deploy modal_app/video.py --env <env>`), or None.
+
+    An ephemeral `app.run()` tears its containers down when the call returns, so
+    every take pays the model load. A deployed app keeps a container for
+    SCALEDOWN_S after the last call, which is what makes per-take processing
+    during a recording session cheap. The deployed code is whatever was last
+    deployed, not the working tree.
+    """
+    import modal
+    try:
+        cls = modal.Cls.from_name(app_name, "Infer", environment_name=env)
+        cls.hydrate()
+        return cls
+    except modal.exception.NotFoundError:
+        return None
 
 
 def project(args, work: Path, recs: list[dict], acts_dir: Path, info: dict) -> Path:
@@ -115,7 +139,7 @@ def project(args, work: Path, recs: list[dict], acts_dir: Path, info: dict) -> P
     if args.rrd:
         from cogmirror import rerun_export
 
-        rrd = Path(args.rrd_dir) / f"{work.name}.rrd"
+        rrd = rerun_export.rrd_path(args.rrd_dir, work)
         rerun_export.export(work, rrd, traces=args.traces)
         print(f"rerun -> {rrd}  (open with: .venv/bin/python -m rerun {rrd})")
     return out
@@ -144,6 +168,7 @@ def main():
     ap.add_argument("--gemotions", default=GEMOTIONS)
     ap.add_argument("--landmarker", default=LANDMARKER)
     ap.add_argument("--env", default="cogmirror", help="Modal environment")
+    ap.add_argument("--ephemeral", action="store_true", help="run the Modal app ephemerally from the working tree even if one is deployed")
     ap.add_argument("--rrd", action="store_true", help="also export a Rerun recording")
     ap.add_argument("--rrd-dir", default="data/rerun")
     ap.add_argument("--traces", default="default", help="traces for the Rerun blueprint (see scripts/rerun_export.py)")

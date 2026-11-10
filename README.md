@@ -36,6 +36,12 @@ Copy the model weights and gemotions data to the `cogmirror` Volume. CPU only; a
 .venv/bin/modal run --env cogmirror modal_app/app.py::download
 ```
 
+The video pipeline (M2 onward) should be deployed once so its containers keep the model loaded between calls; redeploy after changing anything under `src/` or `modal_app/`:
+
+```bash
+.venv/bin/modal deploy --env cogmirror modal_app/video.py
+```
+
 Gate 0, the reproduction check. Uses two GPUs for a few minutes each, and writes `results/gate0_*.json`:
 
 ```bash
@@ -74,13 +80,13 @@ Then download `/acts/pass1` from the Volume to `data/acts/pass1` and run `script
 
 ## Viewer (Rerun)
 
-Time series are inspected in [Rerun](https://rerun.io): video, the crop the model saw, and the traces stacked like an EKG with one shared y-scale. Install the extra once (`.venv/bin/pip install -e ".[viz]"`), then:
+Time series are inspected in [Rerun](https://rerun.io): video, the crop the model saw, and the traces overlaid on one plot, with a stacked EKG-style tab behind it. Install the extra once (`.venv/bin/pip install -e ".[viz]"`), then:
 
 ```bash
 .venv/bin/python scripts/rerun_export.py --all --open
 ```
 
-That exports every processed video under `data/video/` to `data/rerun/<id>.rrd` and opens the native viewer on all of them; the Recordings panel (top left) switches between videos. `--traces valence,pc2,happy,sad,angry` picks the stacked traces (default: valence, the PCs, and the six emotions that vary most in that video); every other trace is still in the recording under `traces/` and can be added from the blueprint panel. `--y-range` sets the shared scale (reference-SD units, default ±3). `scripts/video_run.py ... --rrd` exports as part of a run; `--web` serves the browser viewer instead of the native app.
+That exports every processed video under `data/video/` to `data/rerun/<id>.rrd` and opens the browser viewer on all of them; the Sources panel (top left) switches between videos. `--traces valence,pc2,happy,sad,angry` picks the stacked traces (default, per video: valence, the PCs, the story's target emotions, and the six emotions most often in the frame-level top three over the clip); every other trace is still in the recording under `traces/` and can be added from the blueprint panel. `--y-range` sets the shared scale (reference-SD units, default ±3). `scripts/video_run.py ... --rrd` exports as part of a run; `--native` opens the native app instead of the browser (it needs `ffmpeg` to play the video).
 
 ## Layout
 
@@ -96,7 +102,7 @@ That exports every processed video under `data/video/` to `data/rerun/<id>.rrd` 
 | `src/cogmirror/m1.py` | M1 inference: activations, verbal logits, forced-choice labels |
 | `src/cogmirror/perturb.py` | Nuisance perturbations for the noise floor |
 | `src/cogmirror/metrics.py` | Gate metrics |
-| `src/cogmirror/rerun_export.py` | Rerun recording export (video, crops, stacked traces, blueprint) |
+| `src/cogmirror/rerun_export.py` | Rerun recording export (video, audio, crops, story, traces, blueprint) |
 | `modal_app/app.py` | Modal image, Volume, and remote functions |
 | `scripts/` | Local entry points |
 | `data/`, `results/` | Not in git |

@@ -753,14 +753,20 @@ def run_analysis(data: list[TakeData], split: SplitConfig, cfg: AnalysisConfig =
 def gate3(R: dict) -> dict:
     """The Gate 3 criteria from the work plan, on held-out segments."""
     held = R["results"]["heldout"]
-    best = None
+    best = None         # the passing condition with the highest r; else the highest r overall
     for cond in CONDITIONS:
         z = held[cond]["zero_training"]
-        if "valence_r" in z:
-            cand = (z["valence_r"], z["p"]["valence_r_story"], cond)
-            if best is None or (np.nan_to_num(cand[0], nan=-9) > np.nan_to_num(best[0], nan=-9)):
-                best = cand
-    valence_pass = bool(best and np.isfinite(best[0]) and best[0] >= 0.2 and best[1] < 0.05)
+        if "valence_r" not in z or not np.isfinite(z["valence_r"]):
+            continue
+        cand = (z["valence_r"], z["p"]["valence_r_story"], cond)
+        ok = cand[0] >= 0.2 and np.isfinite(cand[1]) and cand[1] < 0.05
+        if best is None:
+            best = cand
+            continue
+        best_ok = best[0] >= 0.2 and np.isfinite(best[1]) and best[1] < 0.05
+        if (ok and not best_ok) or (ok == best_ok and cand[0] > best[0]):
+            best = cand
+    valence_pass = bool(best and best[0] >= 0.2 and np.isfinite(best[1]) and best[1] < 0.05)
     turns = {c: held[c]["zero_training"].get("turn") for c in CONDITIONS}
     turn_p = {c: held[c]["zero_training"].get("p", {}).get("turn_shift") for c in CONDITIONS}
     turn_pass = any(p is not None and np.isfinite(p) and p < 0.05 and turns[c]["mean_signed_step"] > 0 for c, p in turn_p.items())

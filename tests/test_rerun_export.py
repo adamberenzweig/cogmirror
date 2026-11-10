@@ -11,7 +11,8 @@ def _cols(n=20):
     rng = np.random.default_rng(0)
     cols = {"frame_index": np.arange(n) * 6, "t": np.arange(n) * 0.2, "face_found": np.ones(n, bool),
             "valence": rng.normal(size=n), "valence_raw": rng.normal(size=n), "pc1": rng.normal(size=n),
-            "pc2": rng.normal(size=n), "pc3": rng.normal(size=n), "top1": np.array(["happy"] * n)}
+            "pc2": rng.normal(size=n), "pc3": rng.normal(size=n),
+            "top1": np.array(["happy"] * (n - 2) + ["sad"] * 2), "top2": np.array(["sad"] * n), "top3": np.array(["angry"] * n)}
     for e, scale in (("happy", 3), ("sad", 1), ("at ease", 0.1), ("angry", 2)):
         cols[f"score_{e}"] = rng.normal(size=n) * scale
     return cols
@@ -23,7 +24,11 @@ def test_catalog_and_default_selection():
     assert cat["valence"] == "traces/valence/windowed" and "pc1" not in cat and cat["pc2"] == "traces/pc/pc2"
     assert cat["at ease"] == "traces/emotion/at_ease"
     sel = RE.resolve_traces("default", cols, top_k=2)
-    assert sel[:3] == ["valence", "pc2", "pc3"] and set(sel[3:]) == {"happy", "angry"}
+    assert sel == ["valence", "pc2", "pc3", "happy", "sad"]          # by top-3 label frequency, not variance
+    assert RE.resolve_traces("default", cols, top_k=2, targets=["at ease", "sad", "unknown"]) == \
+        ["valence", "pc2", "pc3", "at ease", "sad", "happy", "angry"]  # story targets first, then the ranking
+    novar = {k: v for k, v in cols.items() if not k.startswith("top")}
+    assert set(RE.default_traces(novar, top_k=2)[3:]) == {"happy", "angry"}   # variance fallback
     assert RE.resolve_traces("valence,happy,valence", cols) == ["valence", "happy"]
     with pytest.raises(KeyError):
         RE.resolve_traces("nope", cols)
@@ -54,3 +59,28 @@ def test_export_writes_rrd(tmp_path):
     s = RE.export(work, out, traces="valence,pc2,happy", take_log=tmp_path / "take.json", include_video=False)
     assert out.exists() and out.stat().st_size > 1000
     assert s["traces"] == ["valence", "pc2", "happy"] and s["video"] is None
+
+
+def test_recording_label_includes_session_for_takes(tmp_path):
+    from cogmirror import rerun_export as RE
+    single = tmp_path / "data" / "video" / "02-01-03"
+    take = tmp_path / "data" / "video" / "20261109-2004" / "001_calibration_calibration"
+    assert RE.recording_label(single) == "02-01-03"
+    assert RE.recording_label(take) == "20261109-2004/001_calibration_calibration"
+    assert RE.rrd_path(tmp_path / "rerun", take).name == "20261109-2004_001_calibration_calibration.rrd"
+
+
+def test_take_log_discovery_and_story_markdown(tmp_path):
+    import json
+    from cogmirror import rerun_export as RE
+    work = tmp_path / "data" / "video" / "20261109-2055" / "002_s011_read"
+    work.mkdir(parents=True)
+    assert RE.find_take_log(work) is None
+    log = tmp_path / "data" / "recordings" / "20261109-2055" / "002_s011_read.json"
+    log.parent.mkdir(parents=True)
+    log.write_text(json.dumps({"sentences": ["A.", "B."], "sentence_times": [{"start": 0, "end": 1}]}))
+    assert RE.find_take_log(work) == log
+    assert RE.find_take_log(tmp_path / "data" / "video" / "clip") is None
+    md = RE.story_markdown(["First one.", "Second one."], 1)
+    assert md == "First one.\n\n**▶ Second one.**"
+    assert RE.story_markdown(["x"], None) == "x"

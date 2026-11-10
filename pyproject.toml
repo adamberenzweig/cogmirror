@@ -30,7 +30,7 @@ analysis = ["scikit-learn>=1.5", "pyarrow>=15"]
 video = ["opencv-python-headless", "mediapipe>=1.2", "pyarrow>=15", "pillow>=10"]
 # The Rerun viewer export (scripts/rerun_export.py). imageio-ffmpeg bundles an
 # ffmpeg binary for transcoding the recorder's WebM files.
-viz = ["rerun-sdk>=0.42", "pyarrow>=15", "imageio-ffmpeg"]
+viz = ["rerun-sdk>=0.42", "pyarrow>=15", "imageio-ffmpeg", "pillow"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -10,7 +10,7 @@ const $ = (s) => document.querySelector(s);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const params = new URLSearchParams(location.search);
 const FAKE = params.get("fake") === "1";           // synthetic stream for testing without a camera
-const CALIBRATION_S = Number(params.get("calib") || 60);
+const CALIBRATION_S = Number(params.get("calib") || 15);  // ?calib=60 for a longer one
 const LEAD_IN_S = 1.5, TAIL_S = 1.5, LISTEN_GAP_MS = 500;
 
 const state = {
@@ -371,6 +371,7 @@ async function boot() {
   $("#start-camera").addEventListener("click", startCamera);
   $("#camera").addEventListener("change", () => { if (state.stream) startCamera(); });
   $("#resolution").addEventListener("change", () => { if (state.stream) startCamera(); });
+  $("#start-session").textContent = `Start session (${CALIBRATION_S} s calibration first)`;
   $("#start-session").addEventListener("click", runSession);
   $("#end-session").addEventListener("click", () => { state.endAfter = true; $("#end-session").textContent = "Ending after this take"; });
   if (FAKE) { for (const c of document.querySelectorAll(".must")) c.checked = true; }
