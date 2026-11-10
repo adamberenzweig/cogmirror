@@ -10,7 +10,7 @@ Produce a high-dimensional, per-frame time series describing a person's apparent
 
 ## Scope relative to the brief
 
-The [brief](cogmirror-brief.md) proposes training a model to predict the text's emotion vector (EV) from facial and vocal features. This design tests a cheaper route first, the brief's third architecture option: read the EVs straight out of an existing VLM, with no training.
+The [brief](../cogmirror-brief.md) proposes training a model to predict the text's emotion vector (EV) from facial and vocal features. This design tests a cheaper route first, the brief's third architecture option: read the EVs straight out of an existing VLM, with no training.
 
 - The brief's core idea survives here as the **evaluation** (text–face agreement) and as the **fallback**. The blendshape-regression "baseline" below is the brief's original proposal in its simplest form. If it beats the zero-training readout, that is a result, and the project continues on that track with the same data and metrics.
 - Out of scope for this design: speech prosody, real-time inference, and the demo. Two consequences are worth knowing now:

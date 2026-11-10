@@ -1,7 +1,7 @@
 # Work Plan: Reading LLM Emotion Vectors from Facial Video
 
 **Date:** 2026-11-09
-**Design:** [face-emotion-vectors-design.md](face-emotion-vectors-design.md) · **Brief:** [cogmirror-brief.md](cogmirror-brief.md)
+**Design:** [face-emotion-vectors-design.md](face-emotion-vectors-design.md) · **Brief:** [cogmirror-brief.md](../cogmirror-brief.md)
 
 ## Shape of the plan
 
@@ -247,7 +247,7 @@ Not done in M1: the crop and token-budget sweep (one crop and one budget were us
 - Windowed readouts during neutral speech stay within the noise band set at Gate 1.
 - Cost per hour of video is known and acceptable for M4's volume.
 
-**Gate 2 result (2026-11-09): pass on lexical control, speech-motion floor and cost; temporal sanity passes on acted onsets and awaits the self-recorded scripted events. Built and run in a separate session; full report in [docs/results/m2-gate2-report.md](docs/results/m2-gate2-report.md).**
+**Gate 2 result (2026-11-09): pass on lexical control, speech-motion floor and cost; temporal sanity passes on acted onsets and awaits the self-recorded scripted events. Built and run in a separate session; full report in [docs/results/m2-gate2-report.md](results/m2-gate2-report.md).**
 
 Pipeline as built: 5 fps sampling, one-euro smoothing of the face box, medium crop at 768 px, budget 280, chat-prefill layout, last token; scores at layer 35, valence at layer 50; reference statistics from the M1 dev actors (`results/m1/reference_a2_prefill.npz`); 1.5 s centered windows. Code: `src/cogmirror/video.py`, `src/cogmirror/store.py`, `modal_app/video.py`, `scripts/video_run.py`; the viewer is Rerun, via `scripts/rerun_export.py` (video, the model's crop, and the traces stacked EKG-style on one shared scale; the recorder's WebM takes are transcoded with the bundled ffmpeg). Runs: all 1,440 RAVDESS clips and 575 held-out CREMA-D clips (110 minutes of video, 34,700 frames); about 4.5 GPU-hours.
 
