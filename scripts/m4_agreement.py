@@ -67,6 +67,7 @@ def main() -> int:
     ap.add_argument("--no-blendshapes", action="store_true")
     ap.add_argument("--include-bad", action="store_true")
     ap.add_argument("--sessions", default="", help="comma list of session ids to use (default all)")
+    ap.add_argument("--conditions", default="read", help="comma list of conditions to analyse (default: read only; listening takes are off by default in the recorder)")
     args = ap.parse_args()
 
     data = Path(args.data)
@@ -75,9 +76,12 @@ def main() -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    conditions = tuple(c.strip() for c in args.conditions.split(",") if c.strip())
+    agreement.CONDITIONS = conditions          # the lag search, the per-condition tables and the gate follow this list
     takes = align.find_takes(data / "recordings", include_bad=args.include_bad,
                              sessions=args.sessions.split(",") if args.sessions else None)
-    story_takes = [t for t in takes if t.condition in align.CONDITIONS]
+    takes = [t for t in takes if t.condition in conditions or t.condition == align.CALIBRATION]
+    story_takes = [t for t in takes if t.condition in conditions]
     print(f"{len(takes)} takes ({len(story_takes)} story takes) in {len({t.session_id for t in takes})} session(s) under {data / 'recordings'}")
     if not story_takes:
         print("nothing to analyse")

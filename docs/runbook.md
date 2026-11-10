@@ -79,7 +79,25 @@ Options: `--traces valence,pc2,happy,sad,angry` chooses the plotted traces (pres
 
 then browse to `http://localhost:9090/?url=rerun%2Bhttp%3A%2F%2Flocalhost%3A9876%2Fproxy` (the browser viewer does not find the server on its own).
 
-## 4. Hosted version (share with others)
+## 4. Gate 3 analysis and the results notebook
+
+After a session is processed, the agreement analysis (reading takes only by default; `--conditions read,listen` to include listening) writes `results/m4/agreement_report.md`, `agreement_metrics.json` and `segments.parquet`; the split (held-out session and stories) is created on the first run and kept in `results/m4/split.json`, so delete that file if the set of sessions changes before the real run:
+
+```bash
+.venv/bin/python scripts/m4_agreement.py --lag-grid=-1:2:0.25
+```
+
+The plots are in `notebooks/m4_results.ipynb` (install the extra once: `.venv/bin/pip install -e ".[notebook]"`); open it with `.venv/bin/jupyter lab notebooks/m4_results.ipynb` or execute it headless, which also writes the figures to `results/m4/figures/`:
+
+```bash
+.venv/bin/jupyter nbconvert --to notebook --execute --inplace notebooks/m4_results.ipynb
+```
+
+The notebook is generated from `notebooks/make_m4_results.py` so the cells stay reviewable as code; edit that file, regenerate, re-execute.
+
+Takes recorded on the hosted version live on the Volume; pull a session's logs and series before analysing (`modal volume get --env cogmirror cogmirror /public/recordings/<session> data/recordings/` and each take's `.parquet` and `frames/frames.jsonl` under `/public/video/<session>/` into `data/video/<session>/`).
+
+## 5. Hosted version (share with others)
 
 The recorder, the processing and the viewer links also run as a Modal web app (`modal_app/web.py`), so other people can record takes in their browser without installing anything. Visitors' takes live under `/public` on the Volume, apart from the research recordings.
 

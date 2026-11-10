@@ -26,6 +26,7 @@ model = [
 dev = ["pytest>=8"]
 # Offline analysis on the laptop.
 analysis = ["scikit-learn>=1.5", "pyarrow>=15"]
+notebook = ["matplotlib>=3.8", "jupyter", "nbformat", "nbconvert", "ipykernel", "pyarrow>=15"]
 # Local video decoding and face tracking (scripts/video_run.py).
 video = ["opencv-python-headless", "mediapipe>=1.2", "pyarrow>=15", "pillow>=10"]
 # The Rerun viewer export (scripts/rerun_export.py). imageio-ffmpeg bundles an
