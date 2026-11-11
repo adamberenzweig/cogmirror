@@ -28,11 +28,29 @@ def code(text: str) -> None:
 
 
 md("""
-# M4: text–face agreement (Gate 3)
+# M4 results: text–face agreement (Gate 3)
 
-Plots of `results/m4/` as written by `scripts/m4_agreement.py`: the gate metrics against their nulls, the per-take face readout against the story labels, story-level versus within-story agreement, the lag search, and example traces. Reading condition only.
+## Results summary
 
-Regenerate the inputs with `.venv/bin/python scripts/m4_agreement.py --lag-grid=-1:2:0.25`, then run all cells. Figures are saved to `results/m4/figures/`.
+Each claim points to the section that supports it; each section opens with what its plot shows.
+
+* The text-derived valence direction reads faces with no training. Emotion vectors extracted purely from text (gemotions, reproduced in Gate 0) were projected onto Gemma 4’s activations for face images. On held-out actors across two acted datasets, that zero-training readout separates positive from negative expression with AUC 0.98, and four-way among negative emotions at 58 percent against 25 chance and 66 for human raters. That matches a dedicated facial-expression model and a blendshape regression trained for the task. This is the strongest evidence that at least the valence axis is shared across modalities. *(Section 9, Gate 1 row.)*
+
+* The readout survives real video and natural reading. In acted video, the sentence being spoken explains under 1 percent of the readout’s variance against 73 for the emotion, speech motion sits ten SDs below the expression gap after windowing, and expression onsets coincide with geometric landmark onsets. In the recorded reading takes, the mean readout per take separates positive from negative stories with AUC 0.90, with nothing fitted to the reader beyond a per-session offset. *(Section 9, Gate 2 row; section 2.)*
+
+* The organization of the face space mirrors the text taxonomy. Clustering frame-level emotion profiles from 21 takes gives clusters that march through the paper’s ten clusters in valence order, from Fear and Overwhelm through Hostile Anger to Exuberant Joy, with positive and negative stories at opposite ends of the embedding. *(Section 7.)*
+
+* Shared directions, but not the same origin. The reading face carries a constant profile, reflective and nostalgic, that dominates absolute scores, and the calibration face sits outside the reading manifold entirely. The text and face activations live in different regions of the space; what transfers is the axes, not the coordinates. Any claim of “the same representation” has to be stated at that level. *(Section 7: the calibration island, the tags before and after standardizing.)*
+
+* Beyond valence the evidence is weak. Category discrimination is above chance but modest, and the full 171-score profile agrees with the text only faintly: a cosine of 0.18 under a lightly trained map, indistinguishable from what blendshapes achieve. Whether finer emotion distinctions are shared, or only the valence axis plus arousal-like structure, is open. *(Section 1, the ridge and blendshape rows; section 9, the 4-way numbers.)*
+
+* The sentence-level test did not pass, and the text side is why. Gate 3’s held-out correlation between face and text valence per sentence is -0.01. The text EVs are 85 to 90 percent within-story variation at sentence scale and rank neutral stories at the positive extreme, so the shared-axis hypothesis is currently untestable at fine time scales until the text target is fixed. *(Sections 1, 3, 4 and 6.)*
+
+* Caveats on all of it: one subject for the reading data, performed expressions in the acted datasets, 18 story takes, and a numerically sensitive model whose deep-layer activations shift with hardware and precision, so every number is tied to one pinned configuration. *(Section 8 for the exact numbers; the work plan for the configuration.)*
+
+## How this notebook is built
+
+Plots of `results/m4/` as written by `scripts/m4_agreement.py` (reading condition only): the gate metrics against their nulls, the per-take face readout against the story labels, story-level versus within-story agreement, the lag search, example traces, and the clustering of frame-level emotion profiles. Regenerate the inputs with `.venv/bin/python scripts/m4_agreement.py --lag-grid=-1:2:0.25`, then run all cells; the cells come from `notebooks/make_m4_results.py`. Figures are saved to `results/m4/figures/`.
 """)
 
 code("""
@@ -94,7 +112,9 @@ print(metrics["dataset"]["n_segments"], "segments;", metrics["dataset"]["heldout
 md("""
 ## 1. Gate 3 at a glance
 
-Each held-out metric against its story-level permutation null (mean ± 2 SD of 1000 permutations). A dot to the right of its band is a result; inside it is noise. Three variants: the zero-training readout, the ridge map fitted on development segments, and the blendshape baseline.
+**What it shows.** The zero-training readout's sentence-level valence correlation sits inside its null band, so Gate 3 is not passed. Only profile-level agreement under a fitted map clears the null (cosine 0.18), and the blendshape baseline does as well, which is why the evidence beyond valence is called weak in the summary.
+
+How to read it: each held-out metric is a dot against its story-level permutation null (grey band, mean ± 2 SD of 1000 permutations). A blue dot to the right of its band clears p < 0.05; a grey dot inside it is noise. Rows: the zero-training readout, the ridge map fitted on development segments, and the blendshape baseline (same ridge recipe on MediaPipe blendshapes).
 """)
 
 code("""
@@ -130,7 +150,9 @@ print("Gate 3 valence:", "pass" if g["valence"]["pass"] else "no", f"(r {g['vale
 md("""
 ## 2. The face readout per take, against the story label
 
-Mean face valence over each reading take (z-scored on development data), one bar per take, sorted. Bars are colored by the story's labelled polarity (cluster), not by the model: positive stories should sit on the right, negative on the left. The small marker is the text side's story mean on the same z scale.
+**What it shows.** Averaged over a take, the face readout tracks the emotion of the story being read: positive stories to the right, negative to the left, AUC 0.90 over the single-emotion takes, with nothing fitted to the reader beyond a per-session offset. The text side (diamonds) lines up less cleanly, with the neutral story at the far right.
+
+How to read it: one bar per reading take, its mean face valence z-scored on development data, sorted. Bars are colored by the story's labelled polarity, not by the model, so a correct readout shows as blue bars right and orange bars left. The diamond is the text's story mean on the same z scale.
 """)
 
 code("""
@@ -165,7 +187,9 @@ save(fig, "02_take_means_vs_label"); plt.show()
 md("""
 ## 3. Story level versus within story
 
-Left: one point per take, text story mean against face take mean. Right: the same segments after subtracting each story's mean from both sides, i.e. the sentence-to-sentence agreement Gate 3 scores. The gate's null is at the story level, so these two panels separate "tracks which story" from "tracks which sentence".
+**What it shows.** Agreement exists between stories (left, r +0.32 once the neutral story is set aside) and not within them (right, r near zero). The readout tracks which story is being read, not which sentence, which is the level at which Gate 3 is scored.
+
+How to read it: left, one point per take, text story mean against face take mean, colored by label polarity. Right, the same segments after subtracting each story's mean from both sides, i.e. the sentence-to-sentence agreement Gate 3 scores.
 """)
 
 code("""
@@ -202,7 +226,9 @@ fig.tight_layout(); save(fig, "03_story_vs_within"); plt.show()
 md("""
 ## 4. Where the variance is
 
-Share of each modality's valence variance that lies between stories (take means) rather than within them. A text signal that is mostly within-story variation at the sentence level has little to agree with unless the face follows sentence by sentence.
+**What it shows.** About half of the face signal is "which story"; only about a tenth of the text signal is. At sentence scale the text target is mostly within-story variation, so the sentence-level test fails on the text side before the face side is even tested.
+
+How to read it: the bar is the share of each modality's valence variance that lies between stories (take means) rather than within them, for the held-out, development and pooled segments.
 """)
 
 code("""
@@ -228,7 +254,9 @@ save(fig, "04_variance_shares"); plt.show()
 md("""
 ## 5. Lag search
 
-Development-data valence correlation as a function of the face–text lag (positive: the face trails the text). A flat curve means the lag is not identifiable from this much data; the analysis then uses the plateau's center.
+**What it shows.** The curve is flat to within a few hundredths over three seconds, so timing is not what limits the agreement, and the chosen lag is near zero.
+
+How to read it: development-data valence correlation as a function of the face–text lag (positive: the face trails the text). A flat curve means the lag is not identifiable from this much data; the analysis uses the plateau's center.
 """)
 
 code("""
@@ -245,7 +273,9 @@ save(fig, "05_lag_curve"); plt.show()
 md("""
 ## 6. Example traces
 
-Face valence over time for held-out takes (the windowed series, standardized within the take) with the text's sentence valence as steps (also standardized within the take). Chosen: the takes with the best and the worst story-level agreement, plus a neutral story if one was recorded.
+**What it shows.** Even in the best-agreeing take the face moves on a one-to-three-second scale while the text steps once per sentence, and in the neutral story the text sits high where the face does not: the sentence-level target and the face signal have different time scales and, for neutral text, a different origin.
+
+How to read it: face valence over time for held-out takes (the windowed series, standardized within the take) with the text's sentence valence as steps (also standardized within the take). Chosen: the takes with the best and the worst story-level agreement, plus a neutral story.
 """)
 
 code("""
@@ -289,9 +319,11 @@ fig.tight_layout(); save(fig, "06_example_traces"); plt.show()
 """)
 
 md("""
-## 8. Emotion profiles from the takes: clusters and UMAP
+## 7. Emotion profiles from the takes: clusters and UMAP
 
-Every sampled frame of every reading and calibration take gives a 171-score emotion profile (windowed, baselined against the session's calibration). Here they are standardized per score, clustered with k-means, and embedded with UMAP, in the spirit of the paper's figure 6. Each cluster is labelled with the paper's Table 12 cluster of its centroid's strongest emotions and with the most frequent frame-level top-1 tags, and shown with the face crops nearest its centroid. Crops of takes recorded on the hosted version are fetched from the Volume on demand.
+**What it shows.** The face space organizes like the text taxonomy: clusters numbered 1 to 8 move through the paper's clusters in valence order, and positive and negative stories separate along the long axis of the embedding. Two qualifications. The calibration face is a detached island, and the cluster tags only become distinctive after standardizing, i.e. relative to a constant reading-face profile (reflective, nostalgic): what transfers from text to face is the axes, not the coordinates.
+
+How to read it: every sampled frame of every reading and calibration take gives a 171-score emotion profile (windowed, baselined against the session's calibration). Here they are standardized per score, clustered with k-means, and embedded with UMAP, in the spirit of the paper's figure 6. Each cluster is labelled with the paper's Table 12 cluster of its centroid's strongest emotions and with the most frequent frame-level top-1 tags, and shown with the face crops nearest its centroid. Crops of takes recorded on the hosted version are fetched from the Volume on demand.
 """)
 
 code("""
@@ -452,7 +484,9 @@ fig.tight_layout(); save(fig, "08_cluster_thumbnails"); plt.show()
 md("""
 ### Cluster profiles over the paper's ten clusters
 
-Each row is one of our frame clusters; each column one of the paper's Table 12 clusters (ordered by valence). The cell is the centroid's mean standardized score over that cluster's emotions. A readout that organizes like the paper would show one strong column per row, moving from the warm to the cool side down the rows.
+**What it shows.** Down the rows, the blue (positive) cells move from the right-hand, negative columns to the left-hand, positive ones: the clusters are ordered by valence, and each is strongest in a neighbouring group of the paper's clusters rather than in one alone.
+
+How to read it: each row is one of our frame clusters; each column one of the paper's Table 12 clusters (ordered by valence). The cell is the centroid's mean standardized score over that cluster's emotions. A readout that organizes like the paper would show one strong column per row, moving from the warm to the cool side down the rows.
 """)
 
 code("""
@@ -479,7 +513,9 @@ fig.tight_layout(); save(fig, "09_cluster_profiles"); plt.show()
 """)
 
 md("""
-## 9. The gate table, for the record
+## 8. The gate table, for the record
+
+The numbers behind section 1, as the report prints them.
 """)
 
 code("""
@@ -495,6 +531,26 @@ for vk, vlabel in variants:
                 f"{R['cosine']:+.2f} ({R['p']['cosine_story']:.2f}) | {R['retrieval']['top5']:.2f} ({R['p']['top5_story']:.2f}) | "
                 f"{tn['mean_signed_step']:+.2f}, {tn['n_stories']} ({R['p'].get('turn_shift', float('nan')):.2f}) |")
 Markdown("\\n".join(rows))
+""")
+
+
+md("""
+## 9. Earlier gates (M1 and M2), for reference
+
+**What it shows.** The text-derived emotion directions read acted faces with no training, on par with models trained for the task (Gate 1), and the readout survives speech and motion in video (Gate 2). These are the numbers behind the first two summary claims; they come from the work plan, not from this notebook's inputs.
+
+| Gate | Check | Result |
+|---|---|---|
+| 0 | gemotions vectors reproduced from the released caches | exact at layer 20; deep layers numerically sensitive, with per-emotion score correlation ≥ 0.986 (median 0.996) against the released vectors |
+| 1 | Valence, held-out actors, two frames per clip (zero-training) | AUC 0.982 |
+| 1 | 4-way among negative emotions (angry, sad, afraid, disgusted) | 57.6% (chance 25%; human raters 66%) |
+| 1 | Baselines on the same clips: HSEmotion / blendshape regression / verbal next-word | 0.979 & 58.5% / 0.943 & 57.9% / 0.978 & 46.0% |
+| 1 | Noise floor: expression gap over nuisance shifts (crop, lighting; JPEG 9×, batch composition 43×) | 14–18× |
+| 2 | Lexical control in acted video: variance explained by emotion vs by the sentence spoken | η² 0.729 vs 0.004 |
+| 2 | Speech-motion floor: happy − negative gap over within-neutral SD, 1.5 s windows | 10 SD |
+| 2 | Expression onsets within ±1 s of blendshape onsets | 79% (RAVDESS), 85% (CREMA-D) |
+
+Details and the full tables: `docs/face-emotion-vectors-workplan.md` and `docs/results/`.
 """)
 
 
