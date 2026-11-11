@@ -520,7 +520,7 @@ The numbers behind section 1, as the report prints them.
 
 code("""
 from IPython.display import Markdown
-rows = ["| Variant | n | valence r (p story) | PC2–4 r | cosine (p) | top-5 (p) | turn step, n (p shift) |", "|---|---|---|---|---|---|---|"]
+rows = ["| Variant | n | valence r (p story) | r hostility / arousal / detachment (PC2–4) | cosine (p) | top-5 (p) | turn step, n (p shift) |", "|---|---|---|---|---|---|---|"]
 for vk, vlabel in variants:
     R = H.get(vk)
     if not R or "p" not in R:

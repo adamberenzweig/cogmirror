@@ -22,9 +22,33 @@ import numpy as np
 DENOISE_VARIANCE = 0.5  # gemotions DENOISING_VARIANCE_THRESHOLD
 RESULTS_SUBDIR = "results/gemma4-31b"
 NEUTRAL_KEY = "_neutral"
-# (positive, negative) emotions that fix the sign of PC1 so that valence
-# points the same way at every layer.
-PC1_ANCHOR = ("happy", "sad")
+# (positive, negative) emotions that fix the sign of each of the first PCs so
+# that the axes point the same way at every layer. The names come from where
+# the 171 emotion vectors sit on each axis (layers 35 and 50 agree):
+#   1 valence      happy, joyful ............ sad
+#   2 hostility    vindictive, spiteful, defiant, stubborn ... serene, peaceful, at ease
+#   3 arousal      hysterical, euphoric, excited, panicked ... regretful, empathetic, reflective
+#   4 detachment   relaxed, indifferent, bored, sleepy ....... grateful, infatuated, inspired, hope
+#   5 vigilance    vigilant, suspicious, puzzled, alert ...... triumphant, jubilant, enraged (weaker, 5% of variance)
+PC_ANCHORS = {1: ("happy", "sad"), 2: ("vindictive", "serene"), 3: ("euphoric", "empathetic"),
+              4: ("relaxed", "grateful"), 5: ("suspicious", "triumphant")}
+PC_NAMES = {1: "valence", 2: "hostility", 3: "arousal", 4: "detachment", 5: "vigilance"}
+PC1_ANCHOR = PC_ANCHORS[1]
+
+
+def pc_name(k: int) -> str:
+    """Name of the k-th PC (1-based): valence, hostility, ...; "pc<k>" beyond the named ones."""
+    return PC_NAMES.get(k, f"pc{k}")
+
+
+def pc_index(name: str) -> int | None:
+    """1-based PC index for a name or a "pc<k>" label, else None."""
+    for k, n in PC_NAMES.items():
+        if name == n:
+            return k
+    if name.startswith("pc") and name[2:].isdigit():
+        return int(name[2:])
+    return None
 
 
 # --------------------------------------------------------------------------
@@ -157,14 +181,15 @@ class EVSpace:
         k = min(n_components, len(s))
         comps = vt[:k].copy()
         coords = centered @ comps.T
-        pos, neg = PC1_ANCHOR
-        if pos in emotions and neg in emotions:
-            if coords[emotions.index(pos), 0] < coords[emotions.index(neg), 0]:
-                comps[0] *= -1
-        for j in range(1, k):  # deterministic sign: largest loading positive
-            col = coords[:, j]
-            if col[np.argmax(np.abs(col))] < 0:
-                comps[j] *= -1
+        for j in range(k):
+            pos, neg = PC_ANCHORS.get(j + 1, (None, None))
+            if pos in emotions and neg in emotions:   # anchored sign
+                if coords[emotions.index(pos), j] < coords[emotions.index(neg), j]:
+                    comps[j] *= -1
+            else:                                     # deterministic sign: largest loading positive
+                col = coords[:, j]
+                if col[np.argmax(np.abs(col))] < 0:
+                    comps[j] *= -1
         explained = (s[:k] ** 2) / np.sum(s**2)
         return cls(layer, emotions, m, unit, comps, explained)
 

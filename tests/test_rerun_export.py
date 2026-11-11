@@ -21,12 +21,13 @@ def _cols(n=20):
 def test_catalog_and_default_selection():
     cols = _cols()
     cat = RE.trace_catalog(cols)
-    assert cat["valence"] == "traces/valence/windowed" and "pc1" not in cat and cat["pc2"] == "traces/pc/pc2"
+    assert cat["valence"] == "traces/valence/windowed" and "pc1" not in cat and cat["hostility"] == "traces/pc/hostility"
+    assert "pc2" not in cat and RE.resolve_traces("pc2,pcs", cols) == ["hostility", "arousal"]   # pc<k> aliases the name
     assert cat["at ease"] == "traces/emotion/at_ease"
     sel = RE.resolve_traces("default", cols, top_k=2)
-    assert sel == ["valence", "pc2", "pc3", "happy", "sad"]          # by top-3 label frequency, not variance
+    assert sel == ["valence", "hostility", "arousal", "happy", "sad"]          # by top-3 label frequency, not variance
     assert RE.resolve_traces("default", cols, top_k=2, targets=["at ease", "sad", "unknown"]) == \
-        ["valence", "pc2", "pc3", "at ease", "sad", "happy", "angry"]  # story targets first, then the ranking
+        ["valence", "hostility", "arousal", "at ease", "sad", "happy", "angry"]  # story targets first, then the ranking
     novar = {k: v for k, v in cols.items() if not k.startswith("top")}
     assert set(RE.default_traces(novar, top_k=2)[3:]) == {"happy", "angry"}   # variance fallback
     assert RE.resolve_traces("valence,happy,valence", cols) == ["valence", "happy"]
@@ -58,7 +59,7 @@ def test_export_writes_rrd(tmp_path):
     out = tmp_path / "clip1.rrd"
     s = RE.export(work, out, traces="valence,pc2,happy", take_log=tmp_path / "take.json", include_video=False)
     assert out.exists() and out.stat().st_size > 1000
-    assert s["traces"] == ["valence", "pc2", "happy"] and s["video"] is None
+    assert s["traces"] == ["valence", "hostility", "happy"] and s["video"] is None
 
 
 def test_recording_label_includes_session_for_takes(tmp_path):

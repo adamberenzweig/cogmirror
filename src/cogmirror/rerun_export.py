@@ -10,7 +10,7 @@ The recording holds, on one timeline called `time` (seconds):
     story                 the story text with the sentence being read in bold (recorded takes)
     events/sentence       one text log per sentence start
     traces/valence        PC1 at the valence layer (windowed) and the raw value
-    traces/pc/pc2..       the other principal components
+    traces/pc/<name>      the other principal components: hostility, arousal, detachment, vigilance
     traces/emotion/<e>    all 171 emotion scores
     traces/segment/*      sentence index over time
 
@@ -39,6 +39,8 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
+
+from cogmirror.evspace import PC_ANCHORS, PC_NAMES, pc_index, pc_name
 
 TIMELINE = "time"
 APP_ID = "cogmirror"
@@ -83,7 +85,7 @@ def trace_catalog(cols: dict) -> dict[str, str]:
         out["valence_raw"] = "traces/valence/raw"
     for c in cols:
         if c.startswith("pc") and c[2:].isdigit() and c != "pc1":
-            out[c] = f"traces/pc/{c}"
+            out[pc_name(int(c[2:]))] = f"traces/pc/{pc_name(int(c[2:]))}"
         elif c.startswith("score_"):
             out[c[len("score_"):]] = f"traces/emotion/{_path(c[len('score_'):])}"
         elif c.startswith("blend_"):
@@ -109,7 +111,7 @@ def default_traces(cols: dict, top_k: int = DEFAULT_TOP_K, targets: list[str] | 
     """valence, the other PCs, the story's target emotions (when known), and the k
     emotions most often in the top three over this video; by variance if the series
     has no top-label columns."""
-    names = ["valence"] + [c for c in cols if c.startswith("pc") and c[2:].isdigit() and c != "pc1"]
+    names = ["valence"] + [pc_name(int(c[2:])) for c in cols if c.startswith("pc") and c[2:].isdigit() and c != "pc1"]
     have = {c[len("score_"):] for c in cols if c.startswith("score_")}
     emos = [t for t in targets if t in have]
     ranked = top_label_emotions(cols)
@@ -136,7 +138,9 @@ def resolve_traces(spec: str | list[str], cols: dict, top_k: int = DEFAULT_TOP_K
         elif n == "all":
             out += list(cat)
         elif n == "pcs":
-            out += [k for k in cat if k.startswith("pc")]
+            out += [k for k in cat if cat[k].startswith("traces/pc/")]
+        elif pc_index(n) and pc_name(pc_index(n)) in cat:      # "pc2" is an alias for "hostility", etc.
+            out.append(pc_name(pc_index(n)))
         elif n == "emotions":
             out += [k for k in cat if cat[k].startswith("traces/emotion/")]
         elif n in cat:
@@ -299,6 +303,7 @@ def export(work_dir: str | Path, out_path: str | Path, traces: str | list[str] =
     props = {k: meta[k] for k in ("video", "crop", "budget", "readout", "score_layer", "valence_layer", "window_s", "baseline") if k in meta}
     if targets:
         props["story_target"] = ", ".join(targets)
+    props["pcs"] = "; ".join(f"{k} {PC_NAMES[k]} ({hi} ... {lo})" for k, (hi, lo) in PC_ANCHORS.items())
     rec.log("meta", rr.TextDocument("\n".join(f"{k}: {v}" for k, v in props.items())), static=True)
 
     # -- source video, as frame references on the timeline
@@ -334,8 +339,8 @@ def export(work_dir: str | Path, out_path: str | Path, traces: str | list[str] =
     def column_name(trace: str) -> str:
         if trace in ("valence", "valence_raw"):
             return trace
-        if trace.startswith("pc"):
-            return trace
+        if pc_index(trace):
+            return f"pc{pc_index(trace)}"
         if trace.startswith("blend_"):
             return trace
         return f"score_{trace}"

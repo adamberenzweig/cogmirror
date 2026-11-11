@@ -289,6 +289,44 @@ def web():
 
 
 # --------------------------------------------------------------------------
+# Re-export the Rerun recordings of processed takes (after a viewer change)
+# --------------------------------------------------------------------------
+
+@app.function(image=image, volumes={VOL: volume}, cpu=2, memory=4096, timeout=20 * 60)
+def reexport_take(session: str, take: str) -> str:
+    from cogmirror import recorder, rerun_export
+
+    volume.reload()
+    work = PUB / "video" / session / take
+    rrd = rerun_export.rrd_path(PUB / "rerun", work)
+    summary = rerun_export.export(work, rrd)
+    st = recorder.status_path(PUB / "status", session, take)
+    cur = recorder.read_status(st)
+    if cur and cur.get("stage") == "done":
+        recorder.write_status(PUB / "status", session, take, "done", rrd=rrd.name)
+    volume.commit()
+    return f"{session}/{take}: {summary['frames']} frames, traces {', '.join(summary['traces'][:6])}..."
+
+
+@app.function(image=image, volumes={VOL: volume}, timeout=120)
+def list_processed() -> list[tuple[str, str]]:
+    volume.reload()
+    return sorted((p.parent.parent.name, p.parent.name) for p in (PUB / "video").glob("*/*/*.parquet") if p.stem == p.parent.name)
+
+
+@app.local_entrypoint()
+def reexport(sessions: str = ""):
+    """modal run --env cogmirror modal_app/web.py::reexport [--sessions s1,s2]: redo every take's .rrd."""
+    takes = list_processed.remote()
+    if sessions:
+        wanted = set(sessions.split(","))
+        takes = [t for t in takes if t[0] in wanted]
+    print(f"re-exporting {len(takes)} take(s)")
+    for line in reexport_take.starmap(takes):
+        print("  " + line)
+
+
+# --------------------------------------------------------------------------
 # One-time setup: the projection reference
 # --------------------------------------------------------------------------
 

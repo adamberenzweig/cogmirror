@@ -854,7 +854,7 @@ def write_report(R: dict, path: str | Path, title: str = "M4 text–face agreeme
     L.append("| Reported by condition against every baseline | reading and listening; nulls, neutral text, blendshapes, ridge | "
              "see tables below; verbal baseline absent | Yes |")
     L.append("")
-    cols = ("| Subset | Segments | Stories | Valence r | p story / shift | r PC2–4 | Cosine (p story) | Spearman "
+    cols = ("| Subset | Segments | Stories | Valence r | p story / shift | r hostility / arousal / detachment (PC2–4) | Cosine (p story) | Spearman "
             "| Norm. rank | Top-1 / top-5 (p) | Turn step, n (p shift) |")
     sep = "|---|---|---|---|---|---|---|---|---|---|---|"
     for split_name, heading in (("heldout", "Held-out segments (the reported result)"), ("dev", "Development segments (tuning data; optimistic)")):

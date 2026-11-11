@@ -109,7 +109,7 @@ In the viewer:
 
 - **Switch videos** in the *Sources* panel at the top left; each recording sits under its own `cogmirror/<session>/<take>` entry (one application id per recording, so each keeps its own default layout).
 - **Scrub** with the timeline at the bottom; the video, the model's crop, the top emotions, the story (the sentence being read in bold, from the recorder's key presses) and every trace follow the cursor. Space plays, with the take's audio.
-- **Traces** are overlaid on one plot on the right, with a colored legend; the *stacked* tab behind it draws them one strip each with the same y-scale (±3 reference SDs). The default set is chosen per take: valence, the PCs, the story's target emotions (drawn thicker; the story panel's header names them), and the six emotions that appear most often in the top-three labels over the clip. The blueprint panel on the left hides or shows strips. Every emotion is in the recording under `traces/emotion/`, so any can be dragged into a view.
+- **Traces** are overlaid on one plot on the right, with a colored legend; the *stacked* tab behind it draws them one strip each with the same y-scale (±3 reference SDs). The PCs are named by where the 171 emotion vectors sit on them: valence, hostility (vindictive to serene), arousal (euphoric to reflective), detachment (relaxed and bored to grateful and inspired), vigilance (suspicious to triumphant; weak); `--traces` accepts the names or `pc2`..`pc5`. The default set is chosen per take: valence, the PCs, the story's target emotions (drawn thicker; the story panel's header names them), and the six emotions that appear most often in the top-three labels over the clip. The blueprint panel on the left hides or shows strips. Every emotion is in the recording under `traces/emotion/`, so any can be dragged into a view.
 
 Options: `--traces valence,pc2,happy,sad,angry` chooses the plotted traces (presets: `default`, `pcs`, `emotions`, `all`); `--y-range 4` changes the shared scale; `--take-log <take>.json` adds the sentence boundaries; `--native` opens the native Rerun app instead of the browser (it needs an `ffmpeg` executable to play the video; the browser does not); `--force` re-exports existing files.
 
@@ -144,6 +144,12 @@ Deploy (and redeploy after any change under `src/`, `modal_app/web.py`, `tools/r
 The deploy prints the URL. Share it with `?key=<the key>` appended; the first visit sets a cookie, after which `/`, `/status` and the view links work without it. Rotating the key is `modal secret create --force` with a new value plus a redeploy. Anyone with the key can open anyone else's view links.
 
 How it runs: each kept take is uploaded to the Volume and a Modal function processes it at once (face tracking on CPU, activations through the deployed `cogmirror-video` app, projection against the session's calibration baseline, Rerun export). A story take waits for its session's calibration take to finish first. `/status` lists every take with its stage, timings and a *view* link that opens Rerun's hosted web viewer (app.rerun.io) on that recording; `/api/status` is the same as JSON. Cost per take is a few cents of GPU plus the model container's 10 minutes of warm idle after the last take.
+
+After a change to the viewer export (`src/cogmirror/rerun_export.py`), redeploy and redo the hosted recordings' `.rrd` files; takes keep their series and only the Rerun file is rewritten:
+
+```bash
+.venv/bin/modal run --env cogmirror modal_app/web.py::reexport
+```
 
 To put locally recorded takes on the hosted version (they are processed there like a visitor's):
 
